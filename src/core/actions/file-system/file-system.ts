@@ -154,6 +154,29 @@ export const getDirectoryStats = (dirPath: string): ActionResult => {
   }
 };
 
+export const filterFiles = (
+  dirPath: string = ".",
+  pattern: string = "",
+): ActionResult => {
+  try {
+    if (!fs.existsSync(dirPath)) return [false, "Directory does not exist"];
+
+    const files = fs.readdirSync(dirPath);
+
+    const regex = new RegExp(pattern, "i");
+
+    const matchedFiles = files.filter((file) => regex.test(file));
+
+    if (matchedFiles.length === 0) {
+      return [true, "No files matched the pattern"];
+    }
+
+    return [true, matchedFiles.join(", ")];
+  } catch (e) {
+    return [false, String(e)];
+  }
+};
+
 export const ACTIONS: Record<
   string,
   (args: any) => ActionResult | Promise<ActionResult>
@@ -171,6 +194,7 @@ export const ACTIONS: Record<
     renameFileOrDirectory(args.src || "", args.dest || ""),
   GET_FILE_STATS: (args) => getFileStats(args.path || ""),
   GET_DIRECTORY_STATS: (args) => getDirectoryStats(args.path || ""),
+  FILTER_FILES: (args) => filterFiles(args.path || ".", args.pattern || ""),
 };
 
 export const ACTION_ARGS: Record<string, string[]> = {
@@ -186,6 +210,7 @@ export const ACTION_ARGS: Record<string, string[]> = {
   RENAME_DIRECTORY: ["src", "dest"],
   GET_FILE_STATS: ["path"],
   GET_DIRECTORY_STATS: ["path"],
+  FILTER_FILES: ["path", "pattern"],
 };
 
 export const ACTION_DESCRIPTIONS: Record<string, string> = {
@@ -204,4 +229,6 @@ export const ACTION_DESCRIPTIONS: Record<string, string> = {
     "Retrieves metadata of a file including size, dates, and type.",
   GET_DIRECTORY_STATS:
     "Retrieves metadata of a directory including file count, total size, and latest modification.",
+  FILTER_FILES:
+    "Filters files in a directory using a regex pattern. Returns a comma-separated list of matches.",
 };
