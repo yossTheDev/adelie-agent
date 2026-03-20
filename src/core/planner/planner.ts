@@ -1,4 +1,4 @@
-import { ACTION_ARGS } from "../actions/actions.js";
+import { ACTION_ARGS, ACTION_DESCRIPTIONS } from "../actions/actions.js";
 import { callOllama } from "../llm/llm.js";
 
 interface PlanAction {
@@ -16,7 +16,8 @@ export async function generatePlan(
 ): Promise<PlanAction[]> {
   const actionsInfo = Object.entries(ACTION_ARGS).map(([action, args]) => {
     const argsStr = args.length > 0 ? args.join(", ") : "no args";
-    return `- ${action}: ${argsStr}`;
+    const desc = ACTION_DESCRIPTIONS[action] || "No description available";
+    return `- ${action} (${desc}): ${argsStr}`;
   });
 
   const actionsText = actionsInfo.join("\n");
@@ -24,7 +25,7 @@ export async function generatePlan(
   const prompt = `
 You are a Task Planner Agent. Your job is to break down a user request into a sequence of discrete actions.
 
-Available Actions:
+Available Actions with descriptions:
 ${actionsText}
 
 STRICT RULES:

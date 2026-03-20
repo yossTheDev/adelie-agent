@@ -288,3 +288,32 @@ export const ACTION_ARGS: Record<string, string[]> = {
   GET_CLIPBOARD_TEXT: [],
   RUN_SCRIPT: ["path", "args"],
 };
+
+export const ACTION_DESCRIPTIONS: Record<string, string> = {
+  BROWSER_OPEN: "Opens a URL or performs a web search in the default browser.",
+  LIST_FILES: "Lists up to 50 files in a specified directory.",
+  READ_FILE: "Reads the content of a file, returning up to 2000 characters.",
+  WRITE_FILE: "Writes content to a file, creating directories if necessary.",
+  SYSTEM_TIME: "Returns the current system date and time in ISO format.",
+  MAKE_DIRECTORY:
+    "Creates a directory, including any missing parent directories.",
+  DELETE_FILE: "Deletes a file or directory safely, with force if needed.",
+  COPY_FILE: "Copies a file from a source path to a destination path.",
+  MOVE_FILE: "Moves a file from a source path to a destination path.",
+  PING_HOST: "Sends a single ping to a host to check network connectivity.",
+  DELETE_DIRECTORY: "Deletes a directory and all its contents recursively.",
+  RENAME_FILE: "Renames a file from its current path to a new path.",
+  RENAME_DIRECTORY: "Renames a directory from its current path to a new path.",
+  GET_FILE_STATS:
+    "Retrieves metadata of a file including size, dates, and type.",
+  GET_DIRECTORY_STATS:
+    "Retrieves metadata of a directory including file count, total size, and latest modification.",
+  DOWNLOAD_FILE: "Downloads a file from a URL to a specified local path.",
+  CLIPBOARD_COPY: "Copies provided text to the system clipboard.",
+  CLIPBOARD_PASTE:
+    "Pastes or returns the current text from the system clipboard.",
+  GET_CLIPBOARD_TEXT:
+    "Returns the current text stored in the system clipboard.",
+  RUN_SCRIPT:
+    "Executes a local script with optional arguments and returns its output.",
+};
