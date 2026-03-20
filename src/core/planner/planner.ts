@@ -2,6 +2,7 @@ import { ACTION_ARGS, ACTION_DESCRIPTIONS } from "../actions/actions.js";
 import { callOllama } from "../llm/llm.js";
 
 interface PlanAction {
+  id: string;
   action: string;
   args: Record<string, any>;
 }
@@ -15,39 +16,43 @@ export async function generatePlan(
   debug: boolean = false,
 ): Promise<PlanAction[]> {
   const actionsInfo = Object.entries(ACTION_ARGS).map(([action, args]) => {
-    const argsStr = args.length > 0 ? args.join(", ") : "no args";
+    const argsStr = args.length > 0 ? `Args: [${args.join(", ")}]` : "No args";
     const desc = ACTION_DESCRIPTIONS[action] || "No description available";
-    return `- ${action} (${desc}): ${argsStr}`;
+    return `- ${action}: ${desc}. ${argsStr}`;
   });
 
   const actionsText = actionsInfo.join("\n");
 
   const prompt = `
-You are a Task Planner Agent. Your job is to break down a user request into a sequence of discrete actions.
+You are the Strategic Planner for YI Agent. Your goal is to convert a user request into a precise sequence of actions.
 
-Available Actions with descriptions:
+AVAILABLE ACTIONS:
 ${actionsText}
 
-STRICT RULES:
-1. Return ONLY a JSON object with a "plan" key containing a list of actions.
-2. If the request needs only one action, still return a list with one item.
-3. If the request is impossible, return: {"plan": []}
-4. No conversational text, no explanations, no markdown blocks.
-5. Use only the provided action names and arguments.
+STRICT ARCHITECTURE RULES:
+1. Return ONLY a JSON object: {"plan": [{"id": "unique_id", "action": "NAME", "args": {...}}]}.
+2. DATA PIPING: To use the output of a previous step, use the syntax "$$step_id" as the argument value.
+3. Every step MUST have a unique "id" (e.g., "step1", "read_file", "process_ai").
+4. If a task requires AI processing (translate, summarize, analyze), use the "AI_TRANSFORM" action.
+5. If the request is purely conversational or impossible, return: {"plan": []}.
+6. NO EXPLANATIONS, NO MARKDOWN, NO CONVERSATION.
 
-Examples:
-User: crea una carpeta llamada backup y mueve notas.txt alli
+EXAMPLES:
+
+User: lee notas.txt, tradúcelo a inglés y cópialo al portapapeles
 {
   "plan": [
-    {"action": "MAKE_DIRECTORY", "args": {"path": "backup"}},
-    {"action": "MOVE_FILE", "args": {"src": "notas.txt", "dest": "backup/notas.txt"}}
+    {"id": "f1", "action": "READ_FILE", "args": {"path": "notas.txt"}},
+    {"id": "a1", "action": "AI_TRANSFORM", "args": {"task": "Translate to English", "content": "$$f1"}},
+    {"id": "c1", "action": "CLIPBOARD_COPY", "args": {"text": "$$a1"}}
   ]
 }
 
-User: que hora es
+User: busca el clima de hoy y guárdalo en clima.txt
 {
   "plan": [
-    {"action": "SYSTEM_TIME", "args": {}}
+    {"id": "web", "action": "BROWSER_SEARCH", "args": {"query": "clima hoy"}},
+    {"id": "save", "action": "WRITE_FILE", "args": {"path": "clima.txt", "content": "$$web"}}
   ]
 }
 
@@ -62,7 +67,6 @@ User input: ${userInput}
   }
 
   try {
-    // Clean potential markdown backticks if the LLM ignores the rule
     const cleanRaw = raw.replace(/```json|```/g, "").trim();
     const parsed = JSON.parse(cleanRaw) as PlanResponse;
 
