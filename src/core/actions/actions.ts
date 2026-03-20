@@ -1,10 +1,12 @@
 // This file is auto-generated. Do not edit manually.
+import * as ai from "./ai/ai.js";
 import * as clipboard from "./clipboard/clipboard.js";
 import * as fileSystem from "./file-system/file-system.js";
 import * as network from "./network/network.js";
 import * as system from "./system/system.js";
 
 export const ACTIONS = {
+  ...ai.ACTIONS,
   ...clipboard.ACTIONS,
   ...fileSystem.ACTIONS,
   ...network.ACTIONS,
@@ -12,6 +14,7 @@ export const ACTIONS = {
 };
 
 export const ACTION_ARGS = {
+  ...ai.ACTION_ARGS,
   ...clipboard.ACTION_ARGS,
   ...fileSystem.ACTION_ARGS,
   ...network.ACTION_ARGS,
@@ -19,6 +22,7 @@ export const ACTION_ARGS = {
 };
 
 export const ACTION_DESCRIPTIONS = {
+  ...ai.ACTION_DESCRIPTIONS,
   ...clipboard.ACTION_DESCRIPTIONS,
   ...fileSystem.ACTION_DESCRIPTIONS,
   ...network.ACTION_DESCRIPTIONS,
