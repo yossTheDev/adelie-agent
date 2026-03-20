@@ -2,6 +2,7 @@ import { execSync } from "child_process";
 import fs from "node:fs";
 import path from "node:path";
 import open from "open";
+import clipboardy from "clipboardy";
 
 type ActionResult = [boolean, string];
 
@@ -120,6 +121,124 @@ export const pingHost = (host: string): ActionResult => {
   }
 };
 
+export const deleteDirectory = (dirPath: string): ActionResult => {
+  try {
+    if (!fs.existsSync(dirPath)) return [false, "Directory does not exist"];
+    fs.rmSync(dirPath, { recursive: true, force: true });
+    return [true, `Deleted directory: ${dirPath}`];
+  } catch (e) {
+    return [false, String(e)];
+  }
+};
+
+export const renameFileOrDirectory = (
+  src: string,
+  dest: string,
+): ActionResult => {
+  try {
+    if (!fs.existsSync(src)) return [false, "Source does not exist"];
+    fs.renameSync(src, dest);
+    return [true, `Renamed ${src} to ${dest}`];
+  } catch (e) {
+    return [false, String(e)];
+  }
+};
+
+export const getFileStats = (filePath: string): ActionResult => {
+  try {
+    if (!fs.existsSync(filePath)) return [false, "File does not exist"];
+    const stats = fs.statSync(filePath);
+    return [
+      true,
+      JSON.stringify({
+        size: stats.size,
+        created: stats.birthtime,
+        modified: stats.mtime,
+        isFile: stats.isFile(),
+        isDirectory: stats.isDirectory(),
+      }),
+    ];
+  } catch (e) {
+    return [false, String(e)];
+  }
+};
+
+export const getDirectoryStats = (dirPath: string): ActionResult => {
+  try {
+    if (!fs.existsSync(dirPath) || !fs.statSync(dirPath).isDirectory())
+      return [false, "Directory does not exist"];
+    const files = fs.readdirSync(dirPath);
+    let totalSize = 0;
+    let latestModified = 0;
+    files.forEach((file) => {
+      const fStats = fs.statSync(path.join(dirPath, file));
+      totalSize += fStats.size;
+      if (fStats.mtimeMs > latestModified) latestModified = fStats.mtimeMs;
+    });
+    return [
+      true,
+      JSON.stringify({
+        totalFiles: files.length,
+        totalSize,
+        latestModified: new Date(latestModified),
+      }),
+    ];
+  } catch (e) {
+    return [false, String(e)];
+  }
+};
+
+export const downloadFile = async (
+  url: string,
+  dest: string,
+): Promise<ActionResult> => {
+  try {
+    const res = await fetch(url);
+    if (!res.ok) return [false, `Failed to fetch: ${res.statusText}`];
+    const buffer = Buffer.from(await res.arrayBuffer());
+    const dir = path.dirname(dest);
+    if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
+    fs.writeFileSync(dest, buffer);
+    return [true, `Downloaded file to ${dest}`];
+  } catch (e) {
+    return [false, String(e)];
+  }
+};
+
+export const clipboardCopy = (text: string): ActionResult => {
+  try {
+    clipboardy.writeSync(text);
+    return [true, "Copied to clipboard"];
+  } catch (e) {
+    return [false, String(e)];
+  }
+};
+
+export const getClipboardText = (): ActionResult => {
+  try {
+    const text = clipboardy.readSync();
+    return [true, text];
+  } catch (e) {
+    return [false, String(e)];
+  }
+};
+
+export const runScript = (
+  scriptPath: string,
+  args: string[] = [],
+): ActionResult => {
+  try {
+    if (!fs.existsSync(scriptPath))
+      return [false, "Script file does not exist"];
+    const output = execSync(`"${scriptPath}" ${args.join(" ")}`, {
+      encoding: "utf-8",
+    });
+    return [true, output.trim()];
+  } catch (e) {
+    return [false, String(e)];
+  }
+};
+
 export const ACTIONS: Record<
   string,
   (args: any) => ActionResult | Promise<ActionResult>
@@ -134,6 +253,17 @@ export const ACTIONS: Record<
   COPY_FILE: (args) => copyFile(args.src || "", args.dest || ""),
   MOVE_FILE: (args) => moveFile(args.src || "", args.dest || ""),
   PING_HOST: (args) => pingHost(args.host || ""),
+  DELETE_DIRECTORY: (args) => deleteDirectory(args.path || ""),
+  RENAME_FILE: (args) => renameFileOrDirectory(args.src || "", args.dest || ""),
+  RENAME_DIRECTORY: (args) =>
+    renameFileOrDirectory(args.src || "", args.dest || ""),
+  GET_FILE_STATS: (args) => getFileStats(args.path || ""),
+  GET_DIRECTORY_STATS: (args) => getDirectoryStats(args.path || ""),
+  DOWNLOAD_FILE: (args) => downloadFile(args.url || "", args.dest || ""),
+  CLIPBOARD_COPY: (args) => clipboardCopy(args.text || ""),
+  CLIPBOARD_PASTE: () => getClipboardText(),
+  GET_CLIPBOARD_TEXT: () => getClipboardText(),
+  RUN_SCRIPT: (args) => runScript(args.path || "", args.args || []),
 };
 
 export const ACTION_ARGS: Record<string, string[]> = {
@@ -147,4 +277,14 @@ export const ACTION_ARGS: Record<string, string[]> = {
   COPY_FILE: ["src", "dest"],
   MOVE_FILE: ["src", "dest"],
   PING_HOST: ["host"],
+  DELETE_DIRECTORY: ["path"],
+  RENAME_FILE: ["src", "dest"],
+  RENAME_DIRECTORY: ["src", "dest"],
+  GET_FILE_STATS: ["path"],
+  GET_DIRECTORY_STATS: ["path"],
+  DOWNLOAD_FILE: ["url", "dest"],
+  CLIPBOARD_COPY: ["text"],
+  CLIPBOARD_PASTE: [],
+  GET_CLIPBOARD_TEXT: [],
+  RUN_SCRIPT: ["path", "args"],
 };
