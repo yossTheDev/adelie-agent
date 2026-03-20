@@ -92,8 +92,6 @@ const main = async () => {
       details: allResults,
     };
 
-    console.log(executionSummary);
-
     if (DEBUG) {
       console.log(JSON.stringify(executionSummary, null, 2));
     }
