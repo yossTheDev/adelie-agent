@@ -6,7 +6,8 @@
   },
   "type": "module",
   "scripts": {
-    "dev": "tsx src/cli/index.ts"
+    "dev": "tsx src/cli/index.ts",
+    "actions": "tsx action-wrapper.ts"
   },
   "dependencies": {
     "boxen": "^8.0.1",
