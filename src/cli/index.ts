@@ -1,4 +1,6 @@
 import readline from "node:readline";
+import chalk from "chalk";
+import ora from "ora";
 import { generateResponse } from "../core/response/response.js";
 import { generatePlan } from "../core/planner/planner.js";
 import { executeAction } from "../core/executor/executor.js";
@@ -9,13 +11,14 @@ const rl = readline.createInterface({
   output: process.stdout,
 });
 
-const ask = (q: string) => new Promise<string>((res) => rl.question(q, res));
+const ask = (q: string) =>
+  new Promise<string>((res) => rl.question(chalk.yellowBright.bold(q), res));
 
 const DEBUG = false;
 
 const main = async () => {
-  console.log("\nYI Agent (Multi-Step Mode) 🤖\n");
-  console.log("Type 'exit' to quit\n");
+  console.log(chalk.cyanBright.bold("\nYI Agent (Multi-Step Mode) 🤖\n"));
+  console.log(chalk.gray("Type 'exit' to quit\n"));
 
   while (true) {
     const userInput = await ask("You: ");
@@ -24,52 +27,62 @@ const main = async () => {
     if (!userInput.trim()) continue;
 
     // 1. Planning
+    const spinner = ora({ text: "📑 Thinking...", color: "magenta" }).start();
     let planResult: any = { plan: [] };
-    process.stdout.write("\n📑 Thinking...\n");
 
     try {
       planResult = await generatePlan(userInput);
+      spinner.succeed("✅ Planning complete");
     } catch (e) {
-      console.error("Planning error", e);
+      spinner.fail("❌ Planning failed");
+      console.log(chalk.redBright("Error:"), e);
       continue;
     }
 
     const steps = planResult || [];
-
     let allResults: any[] = [];
     let stopFlow = false;
 
     // Show plan
     if (steps.length > 0) {
-      console.log("\nExecution Plan:\n");
-
+      console.log(chalk.blueBright("\n📝 Execution Plan:\n"));
       steps.forEach((step: any, i: number) => {
-        console.log(`${i + 1}. ${step.action} -> ${JSON.stringify(step.args)}`);
+        console.log(
+          chalk.magenta(`${i + 1}.`) +
+            ` ${chalk.cyan(step.action)} -> ${chalk.green(
+              JSON.stringify(step.args),
+            )}`,
+        );
       });
-
       console.log("");
 
       // 2. Execution
       for (let i = 0; i < steps.length; i++) {
         const step = steps[i];
-
-        process.stdout.write(
-          `⏳ Step ${i + 1}/${steps.length}: ${step.action}...\n`,
-        );
+        const stepSpinner = ora({
+          text: `⏳ Step ${i + 1}/${steps.length}: ${step.action}...`,
+          color: "yellow",
+        }).start();
 
         try {
           const result = await executeAction(step);
           allResults.push(result);
 
           if (!result?.success) {
-            console.log(`❌ Step ${i + 1} failed: ${result?.result}`);
+            stepSpinner.fail(
+              `❌ Step ${i + 1} failed: ${chalk.redBright(result?.result)}`,
+            );
             stopFlow = true;
             break;
           } else {
-            console.log(`✔ Step ${i + 1} completed.`);
+            stepSpinner.succeed(
+              `✔ Step ${i + 1} completed: ${chalk.green(result?.result || "")}`,
+            );
           }
         } catch (e: any) {
-          console.log(`❌ Step ${i + 1} crashed: ${e.message}`);
+          stepSpinner.fail(
+            `❌ Step ${i + 1} crashed: ${chalk.redBright(e.message)}`,
+          );
           stopFlow = true;
           break;
         }
@@ -93,16 +106,16 @@ const main = async () => {
     };
 
     if (DEBUG) {
-      console.log(JSON.stringify(executionSummary, null, 2));
+      console.log(chalk.gray(JSON.stringify(executionSummary, null, 2)));
     }
 
-    process.stdout.write("\nYI Assistant:\n\n");
+    console.log(chalk.greenBright("\n💬 YI Assistant:\n"));
 
     for await (const chunk of generateResponse(executionSummary, userInput)) {
-      if (chunk) process.stdout.write(chunk);
+      if (chunk) process.stdout.write(chalk.white(chunk));
     }
 
-    console.log("\n" + "—".repeat(50) + "\n");
+    console.log("\n" + chalk("—".repeat(50)) + "\n");
   }
 
   rl.close();
