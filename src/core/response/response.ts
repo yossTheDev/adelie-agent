@@ -26,7 +26,8 @@ ${userInput}
 System context (use only if relevant):
 ${systemRules}
 
-Available Actions (for reference, only use if user asks about them):
+Available Actions:
+These are the actions you can execute if the user asks you to perform a task. Do NOT treat them as part of normal conversation unless the user explicitly requests to use them.
 ${actionsText}
 
 Instructions:
