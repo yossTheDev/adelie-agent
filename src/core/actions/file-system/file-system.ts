@@ -323,10 +323,36 @@ export const moveFiles = (filesInput: any, dest: string): ActionResult => {
   }
 };
 
+export const exists = (targetPath: string): ActionResult => {
+  try {
+    const target = path.normalize(targetPath.trim().replace(/"/g, ""));
+    const result = fs.existsSync(target);
+    return [true, result ? "TRUE" : "FALSE"];
+  } catch (e) {
+    return [false, String(e)];
+  }
+};
+
+export const allExist = (pathsInput: any): ActionResult => {
+  try {
+    const paths = parseFileList(pathsInput);
+    if (paths.length === 0) return [true, "FALSE"];
+
+    const results = paths.map((p) => fs.existsSync(path.normalize(p.trim())));
+    const everyExist = results.every((res) => res === true);
+
+    return [true, everyExist ? "TRUE" : "FALSE"];
+  } catch (e) {
+    return [false, String(e)];
+  }
+};
+
 export const ACTIONS: Record<
   string,
   (args: any) => ActionResult | Promise<ActionResult>
 > = {
+  CHECK_EXISTS: (args) => exists(args.path || ""),
+  CHECK_ALL_EXIST: (args) => allExist(args.files || args.paths || ""),
   LIST_FILES: (args) => listFiles(args.path || "."),
   LIST_DIRECTORIES: (args) => listDirectories(args.path || "."),
   LIST_ALL: (args) => listAll(args.path || "."),
@@ -350,6 +376,8 @@ export const ACTIONS: Record<
 };
 
 export const ACTION_ARGS: Record<string, string[]> = {
+  CHECK_EXISTS: ["path"],
+  CHECK_ALL_EXIST: ["paths"],
   LIST_FILES: ["path"],
   LIST_DIRECTORIES: ["path"],
   LIST_ALL: ["path"],
@@ -372,6 +400,10 @@ export const ACTION_ARGS: Record<string, string[]> = {
 };
 
 export const ACTION_DESCRIPTIONS: Record<string, string> = {
+  CHECK_EXISTS:
+    "Checks if a single file or directory exists. Returns 'TRUE' or 'FALSE'. Use this before CREATE_FILE or UPDATE_FILE.",
+  CHECK_ALL_EXIST:
+    "Checks if a list of files or directories all exist. Returns 'TRUE' only if ALL exist, otherwise 'FALSE'.",
   LIST_FILES: "Lists up to 50 files in a specified directory.",
   LIST_DIRECTORIES:
     "Lists up to 50 directories in a specified path (excluding files).",
