@@ -123,6 +123,7 @@ export const executeAction = async (
   }
 };
 
+let lastGateResult: boolean | null = null;
 /**
  * Orchestrator: Runs the full plan sequence and manages dynamic step injection.
  * If an action returns a new set of steps (AI_REPLAN), they are injected into the queue.
@@ -145,10 +146,28 @@ export const runPlan = async (
   while (i < currentQueue.length) {
     const step = currentQueue[i];
 
+    if (lastGateResult === false) {
+      if (debug)
+        console.log(
+          `[DEBUG] Skipping step [${step.id}] due to previous LOGIC_GATE = false`,
+        );
+
+      lastGateResult = null;
+      i++;
+      continue;
+    }
+
     if (onStep) onStep(i, currentQueue.length, step);
 
     try {
       const result = await executeAction(step, debug);
+
+      if (step.action === "LOGIC_GATE") {
+        lastGateResult = Boolean(result.result);
+      } else {
+        lastGateResult = null;
+      }
+
       fullHistory.push(result);
 
       if (onStep) onStep(i, currentQueue.length, step, result);

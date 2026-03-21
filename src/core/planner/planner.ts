@@ -57,18 +57,23 @@ STRICT ARCHITECTURE RULES:
    - Step B: Use STATE_GET to retrieve the combined string.
    - Step C: Use AI_TRANSFORM or AI_SUMMARIZE on the combined string.
 9. VARIABLE PERSISTENCE (CRITICAL):
-       - If a task involves multiple phases (Check -> Gate -> Replan), ALWAYS save the original targets (paths, names, or content) in a buffer named 'task_context' using STATE_APPEND at the very beginning.
-       - This ensures the Worker in AI_REPLAN can retrieve these values using STATE_GET.
-10. CONDITIONAL BRANCHING (IF/THEN):
-    - When the user says "If X exists" or "If X contains", you MUST use LOGIC_GATE.
-    - Path: [Action to find data] -> [LOGIC_GATE to evaluate data] -> [AI_REPLAN based on TRUE/FALSE].
-    - NEVER jump directly to AI_REPLAN if a condition can be evaluated by LOGIC_GATE first.
+    - If a task involves multiple phases (Check -> Gate -> Replan), ALWAYS save the original targets (paths, names, or content) in a buffer named 'task_context' using STATE_APPEND at the very beginning.
+    - This ensures the Worker in AI_REPLAN can retrieve these values using STATE_GET.
+10. CONDITIONAL EXECUTION (CRITICAL):
+    - When the user specifies a condition (e.g., "if", "when"), you MUST use LOGIC_GATE.
+    - Pattern: [Action to get data] -> [LOGIC_GATE] -> [DIRECT ACTION]
+    - DO NOT use AI_REPLAN for simple conditions involving a single action.
+    - The step immediately after LOGIC_GATE will be conditionally executed by the executor.
+    - The planner MUST assume the executor will skip the next step if the condition is FALSE.
 11. LOGIC_GATE SCOPE RULE:
-- A LOGIC_GATE ONLY affects the IMMEDIATELY NEXT step.
-- The next step is conditionally executed based on the gate result.
-- After that, execution MUST continue normally.
-- NEVER assume global conditions or long chains.
-12. NO EXPLANATIONS, NO MARKDOWN, NO CONVERSATION.
+  - A LOGIC_GATE ONLY affects the IMMEDIATELY NEXT step.
+  - The next step is conditionally executed based on the gate result.
+  - After that, execution MUST continue normally.
+  - NEVER assume global conditions or long chains.
+12. NO REPLAN FOR SIMPLE CONDITIONS (CRITICAL):
+  - NEVER use AI_REPLAN when the condition leads to a SINGLE action (e.g., UPDATE_FILE, DELETE_FILE, CREATE_FILE).
+  - AI_REPLAN is ONLY for loops or multi-step processing of lists.
+13. NO EXPLANATIONS, NO MARKDOWN, NO CONVERSATION.
 
 
 MANDATORY DATA FLOW RULES (CRITICAL):
@@ -257,38 +262,26 @@ User: If the file 'status.txt' contains 'ERROR', delete it.
 {
   "plan": [
     {"id": "r1", "action": "READ_FILE", "args": {"path": "./status.txt"}},
-    {"id": "gate1", "action": "LOGIC_GATE", "args": {"condition": "Contains the word ERROR", "data": "$$r1"}},
-    {
-      "id": "decision",
-      "action": "AI_REPLAN",
-      "args": {
-        "originalGoal": "If contextData is 'TRUE', delete ./status.txt. If 'FALSE', do nothing and stop.",
-        "contextData": "$$gate1"
-      }
-    }
+    {"id": "g1", "action": "LOGIC_GATE", "args": {"condition": "Contains the word ERROR", "data": "$$r1"}},
+    {"id": "d1", "action": "DELETE_FILE", "args": {"path": "./status.txt"}}
   ]
 }
 
-User: If there is any file starting with 'bye' in C:/Docs, create 'hello.txt' there.
+User: If the file exists, update it with "Hello"
 {
   "plan": [
-    {"id": "f1", "action": "FILTER_FILES", "args": {"path": "C:/Docs", "pattern": "^bye"}},
-    {
-      "id": "check1",
-      "action": "LOGIC_GATE",
-      "args": {
-        "condition": "The list of files is NOT empty",
-        "data": "$$f1"
-      }
-    },
-    {
-      "id": "decide",
-      "action": "AI_REPLAN",
-      "args": {
-        "originalGoal": "If contextData is 'TRUE', create a file named 'hello.txt' in C:/Docs. If 'FALSE', do nothing.",
-        "contextData": "$$check1"
-      }
-    }
+    {"id": "c1", "action": "CHECK_EXISTS", "args": {"path": "./file.txt"}},
+    {"id": "g1", "action": "LOGIC_GATE", "args": {"condition": "The file exists", "data": "$$c1"}},
+    {"id": "u1", "action": "UPDATE_FILE", "args": {"path": "./file.txt", "content": "Hello"}}
+  ]
+}
+
+User: If there are any .txt files in ./docs, delete them
+{
+  "plan": [
+    {"id": "f1", "action": "FILTER_FILES", "args": {"path": "./docs", "pattern": "\\\\.txt$"}},
+    {"id": "g1", "action": "LOGIC_GATE", "args": {"condition": "The list is NOT empty", "data": "$$f1"}},
+    {"id": "d1", "action": "DELETE_FILES", "args": {"files": "$$f1"}}
   ]
 }
 
@@ -313,7 +306,21 @@ User input: ${userInput}
     }
   }
 
-  console.log(currentPlanRaw);
+  let parsed: PlanResponse | null = null;
+
+  try {
+    const cleanRaw = currentPlanRaw.replace(/```json|```/g, "").trim();
+    parsed = JSON.parse(cleanRaw) as PlanResponse;
+  } catch (e) {
+    if (debug) console.error("[ERROR] Initial plan parse failed:", e);
+    return [];
+  }
+
+  // EARLY EXIT: conversation detected
+  if (!parsed.plan || parsed.plan.length === 0) {
+    if (debug) console.log("[DEBUG] Empty plan detected → skipping QA");
+    return [];
+  }
 
   // --- PHASE 2: REFLECTION LOOP ---
   let attempts = 0;
@@ -324,7 +331,8 @@ User input: ${userInput}
     const reflectionPrompt = `
         As a Quality Assurance expert, analyze this plan for CORRECTNESS and MINIMALISM.
 
-        ${basePrompt}
+        Available Actions:
+        ${actionsText}
 
         USER_REQUEST: "${userInput}"
         PROPOSED_PLAN: ${currentPlanRaw}
@@ -342,6 +350,9 @@ User input: ${userInput}
         7. CONDITIONAL CHECK: If the request contains "If", "When", or "In case", the plan MUST include a LOGIC_GATE. Reject any plan that skips the evaluation step.
         8. ACCUMULATION: If multiple items need a single summary, are STATE_APPEND and STATE_GET used correctly?
         9. NO INVENTIONS: If an action or argument is not in the AVAILABLE ACTIONS list, the plan is INVALID.
+        10. NO REPLAN IN SIMPLE CONDITIONS:
+          - If a LOGIC_GATE is followed by a single direct action, the plan is CORRECT.
+          - Reject plans that use AI_REPLAN unnecessarily after LOGIC_GATE.
 
         RESPONSE:
         - If the plan is PERFECT and MINIMAL, return "READY".
