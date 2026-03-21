@@ -45,7 +45,12 @@ STRICT ARCHITECTURE RULES:
    - When using AI_REPLAN, pass a highly descriptive "originalGoal" and use "$$step_id" for "contextData".
 6. AI_TRANSFORM: Use this ONLY for text/data manipulation (translating, summarizing, analyzing). It returns a string.
 7. WORKER RULE: If the input ALREADY contains a list of items and a goal (e.g., "CONTEXT: ... DATA FOUND: ..."), DO NOT return AI_REPLAN. Generate ATOMIC steps for EACH item.
-8. NO EXPLANATIONS, NO MARKDOWN, NO CONVERSATION.
+9. INFORMATION ACCUMULATION:
+   - When you need to process MULTIPLE items and then give a SINGLE final result (like summarizing several files), use the "Buffer Pattern".
+   - Step A: AI_REPLAN to generate steps that use STATE_APPEND for each item.
+   - Step B: Use STATE_GET to retrieve the combined string.
+   - Step C: Use AI_TRANSFORM or AI_SUMMARIZE on the combined string.
+9. NO EXPLANATIONS, NO MARKDOWN, NO CONVERSATION.
 
 MANDATORY DATA FLOW RULES (CRITICAL):
 - NEVER duplicate or rewrite data that originates from a previous step.
@@ -182,6 +187,34 @@ User: Find all .log files in ./tmp, read "error.log" and then delete all those f
     }
   ]
 }
+
+User: Read all .txt files in ./docs and give me a single summary of everything.
+{
+  "plan": [
+    {"id": "f1", "action": "FILTER_FILES", "args": {"path": "./docs", "pattern": "\\\\.txt$"}},
+    {
+      "id": "collect",
+      "action": "AI_REPLAN",
+      "args": {
+        "originalGoal": "Read each file and use STATE_APPEND with key 'docs_buffer' to save their content",
+        "contextData": "$$f1"
+      }
+    },
+    {"id": "merged", "action": "STATE_GET", "args": {"key": "docs_buffer"}},
+    {"id": "final_sum", "action": "AI_SUMMARIZE", "args": {"content": "$$merged"}}
+  ]
+}
+
+User: CONTEXT: Read each file and use STATE_APPEND with key 'docs_buffer'. DATA FOUND: "C:/a.txt, C:/b.txt"
+{
+  "plan": [
+    {"id": "r1", "action": "READ_FILE", "args": {"path": "C:/a.txt"}},
+    {"id": "s1", "action": "STATE_APPEND", "args": {"key": "docs_buffer", "content": "$$r1"}},
+    {"id": "r2", "action": "READ_FILE", "args": {"path": "C:/b.txt"}},
+    {"id": "s2", "action": "STATE_APPEND", "args": {"key": "docs_buffer", "content": "$$r2"}}
+  ]
+}
+
 User input: ${userInput}
 `;
 
