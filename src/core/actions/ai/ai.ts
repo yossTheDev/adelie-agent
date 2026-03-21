@@ -70,7 +70,7 @@ export const aiReplan = async (args: {
       BASED ON THE DATA FOUND, generate the NEXT steps to complete the original goal.
     `;
 
-    const newSteps = await generatePlan(refinedInput, true);
+    const newSteps = await generatePlan(refinedInput, false);
 
     if (newSteps.length === 0)
       return [true, "Goal already achieved or no further steps needed."];

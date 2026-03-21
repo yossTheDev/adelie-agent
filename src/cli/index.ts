@@ -3,7 +3,7 @@ import chalk from "chalk";
 import ora from "ora";
 import { generateResponse } from "../core/response/response.js";
 import { generatePlan } from "../core/planner/planner.js";
-import { executeAction } from "../core/executor/executor.js";
+import { executeAction, runPlan } from "../core/executor/executor.js";
 import type { ExecutionSummary } from "../core/response/types.js";
 
 const rl = readline.createInterface({
@@ -47,54 +47,40 @@ const main = async () => {
     if (steps.length > 0) {
       console.log(chalk.blueBright("\n📝 Execution Plan:\n"));
       steps.forEach((step: any, i: number) => {
-        console.log(
-          chalk.magenta(`${i + 1}.`) +
-            ` ${chalk.cyan(step.action)} -> ${chalk.green(
-              JSON.stringify(step.args),
-            )}`,
-        );
+        console.log(`${chalk.magenta(i + 1 + ".")} ${chalk.cyan(step.action)}`);
       });
-      console.log("");
 
-      // 2. Execution
-      for (let i = 0; i < steps.length; i++) {
-        const step = steps[i];
-        const stepSpinner = ora({
-          text: `⏳ Step ${i + 1}/${steps.length}: ${step.action}...`,
-          color: "yellow",
-        }).start();
+      let currentSpinner: any = null;
 
-        try {
-          const result = await executeAction(step);
-          allResults.push(result);
-
-          if (!result?.success) {
-            stepSpinner.fail(
-              `❌ Step ${i + 1} failed: ${chalk.redBright(result?.result)}`,
+      // 2. Execution via Orchestrator
+      allResults = await runPlan(
+        steps,
+        false,
+        (index, total, step, result, error) => {
+          if (!result && !error) {
+            // Step Starting
+            currentSpinner = ora({
+              text: `⏳ Step ${index + 1}/${total}: ${step.action}...`,
+              color: "yellow",
+            }).start();
+          } else if (error) {
+            // Step Crashed
+            currentSpinner?.fail(
+              `❌ Step ${index + 1} crashed: ${chalk.redBright(error.message)}`,
             );
-            stopFlow = true;
-            break;
+          } else if (!result?.success) {
+            // Step Failed
+            currentSpinner?.fail(
+              `❌ Step ${index + 1} failed: ${chalk.redBright(result?.result)}`,
+            );
           } else {
-            stepSpinner.succeed(
-              `✔ Step ${i + 1} completed: ${chalk.green(result?.result || "")}`,
+            // Step Succeeded
+            currentSpinner?.succeed(
+              `✔ Step ${index + 1} completed: ${chalk.green(result?.result || "")}`,
             );
           }
-        } catch (e: any) {
-          stepSpinner.fail(
-            `❌ Step ${i + 1} crashed: ${chalk.redBright(e.message)}`,
-          );
-          stopFlow = true;
-          break;
-        }
-      }
-    } else {
-      allResults = [
-        {
-          action: "NONE",
-          success: true,
-          result: "Normal conversation context",
         },
-      ];
+      );
     }
 
     // 3. Response

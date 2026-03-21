@@ -68,6 +68,8 @@ export const copyFile = (src: string, dest: string): ActionResult => {
     if (!fs.existsSync(srcPath))
       return [false, `Source file does not exist: ${src}`];
 
+    if (!fs.existsSync(destPath)) makeDirectory(destPath);
+
     const isDestFile = !!path.extname(destPath);
     const destFolder = isDestFile ? path.dirname(destPath) : destPath;
 
@@ -87,6 +89,11 @@ export const copyFile = (src: string, dest: string): ActionResult => {
 
 export const moveFile = (src: string, dest: string): ActionResult => {
   try {
+    if (!fs.existsSync(src))
+      return [false, `Source file does not exist: ${src}`];
+
+    if (!fs.existsSync(dest)) makeDirectory(dest);
+
     fs.renameSync(src, dest);
     return [true, `Moved ${src} to ${dest}`];
   } catch (e) {

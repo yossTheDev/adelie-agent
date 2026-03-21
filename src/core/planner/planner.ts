@@ -33,16 +33,16 @@ STRICT ARCHITECTURE RULES:
 1. Return ONLY a JSON object: {"plan": [{"id": "unique_id", "action": "NAME", "args": {...}}]}.
 2. DATA PIPING: To use the output of a previous step, use the syntax "$$step_id" as the argument value.
 3. Every step MUST have a unique "id" (e.g., "step1", "read_file", "process_ai").
-3. DYNAMIC REPLANNING: Use "AI_REPLAN" when an action (like FILTER_FILES) returns a list of items that need individual processing.
-   - "originalGoal": The ultimate goal the user wants to achieve.
-   - "contextData": The dynamic data found (usually a $$ reference).
-4. If a task requires AI processing (translate, summarize, analyze), use the "AI_TRANSFORM" action.
-5. If the request is purely conversational or impossible, return: {"plan": []}.
-6. NO EXPLANATIONS, NO MARKDOWN, NO CONVERSATION.
+4. DYNAMIC REPLANNING (Worker Rule):
+   - Use "AI_REPLAN" when an action returns a list of items (files, strings) that need individual processing.
+   - If the input ALREADY contains a list of items and a goal, DO NOT return another AI_REPLAN. Instead, generate ATOMIC steps for EACH item (e.g., READ_FILE, COPY_FILE).
+5. If a task requires AI processing (translate, summarize, analyze), use the "AI_TRANSFORM" action.
+6. If the request is purely conversational or impossible, return: {"plan": []}.
+7. NO EXPLANATIONS, NO MARKDOWN, NO CONVERSATION.
 
 EXAMPLES:
 
-User: translate all .txt files in the logs folder to Spanish
+User: translate all .txt files in the logs folder to English
 {
   "plan": [
     {"id": "search", "action": "FILTER_FILES", "args": {"path": "./logs", "pattern": "\\.txt$"}},
@@ -50,34 +50,20 @@ User: translate all .txt files in the logs folder to Spanish
       "id": "bulk_process",
       "action": "AI_REPLAN",
       "args": {
-        "originalGoal": "Translate each file found to Spanish and save them",
+        "originalGoal": "Translate each file found to English",
         "contextData": "$$search"
       }
     }
   ]
 }
 
-User: read my notes.txt, summarize it and copy it to clipboard
+User: CONTEXT: The user wanted: "Translate file names to English". DATA FOUND: "C:/Hola.txt, C:/Mundo.txt"
 {
   "plan": [
-    {"id": "read", "action": "READ_FILE", "args": {"path": "notes.txt"}},
-    {"id": "sum", "action": "AI_SUMMARIZE", "args": {"content": "$$read"}},
-    {"id": "copy", "action": "CLIPBOARD_COPY", "args": {"text": "$$sum"}}
-  ]
-}
-
-User: find any large .log file and delete them
-{
-  "plan": [
-    {"id": "find", "action": "FILTER_FILES", "args": {"path": ".", "pattern": "\\.log$"}},
-    {
-      "id": "cleanup",
-      "action": "AI_REPLAN",
-      "args": {
-        "originalGoal": "Delete all the log files found in the list",
-        "contextData": "$$find"
-      }
-    }
+    {"id": "t1", "action": "AI_TRANSFORM", "args": {"task": "Translate 'Hola.txt' to English", "content": "Hola.txt"}},
+    {"id": "c1", "action": "COPY_FILE", "args": {"src": "C:/Hola.txt", "dest": "C:/$$t1"}},
+    {"id": "t2", "action": "AI_TRANSFORM", "args": {"task": "Translate 'Mundo.txt' to English", "content": "Mundo.txt"}},
+    {"id": "c2", "action": "COPY_FILE", "args": {"src": "C:/Mundo.txt", "dest": "C:/$$t2"}}
   ]
 }
 

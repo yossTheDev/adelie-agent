@@ -122,51 +122,51 @@ export const executeAction = async (
 export const runPlan = async (
   initialPlan: Intent[],
   debug: boolean = false,
+  onStep?: (
+    index: number,
+    total: number,
+    step: Intent,
+    result?: ExecutionResult,
+    error?: any,
+  ) => void,
 ): Promise<ExecutionResult[]> => {
   const fullHistory: ExecutionResult[] = [];
-  const currentQueue = [...initialPlan]; // Dynamic copy of the plan queue
+  const currentQueue = [...initialPlan];
 
   let i = 0;
   while (i < currentQueue.length) {
     const step = currentQueue[i];
-    const result = await executeAction(step, debug);
-    fullHistory.push(result);
 
-    // Step Injection Logic: AI_REPLAN can add new steps to the currentQueue
-    if (step.action === "AI_REPLAN" && result.success) {
-      try {
-        // Parse the result as a new list of Intent steps
-        const newSteps =
+    // Notify UI that a step is starting
+    if (onStep) onStep(i, currentQueue.length, step);
+
+    try {
+      const result = await executeAction(step, debug);
+      fullHistory.push(result);
+
+      // Notify UI that a step finished
+      if (onStep) onStep(i, currentQueue.length, step, result);
+
+      if (!result.success) break;
+
+      // Handle Step Injection
+      if (step.action === "AI_REPLAN") {
+        const rawData =
           typeof result.result === "string"
             ? JSON.parse(result.result)
             : result.result;
+        const newSteps = Array.isArray(rawData) ? rawData : rawData?.plan;
 
         if (Array.isArray(newSteps) && newSteps.length > 0) {
-          if (debug)
-            console.log(
-              `[DEBUG] AI_REPLAN: Injecting ${newSteps.length} new steps.`,
-            );
-          // Inject new steps right after the current position
           currentQueue.splice(i + 1, 0, ...newSteps);
         }
-      } catch (e) {
-        if (debug)
-          console.log("[DEBUG] AI_REPLAN: Result was not a valid step array.");
       }
-    }
-
-    // Halt execution if a mandatory step fails
-    if (!result.success) {
-      if (debug)
-        console.error(
-          `[FATAL] Stopping plan at step ${step.id} due to failure.`,
-        );
+    } catch (e) {
+      if (onStep) onStep(i, currentQueue.length, step, undefined, e);
       break;
     }
-
     i++;
   }
-
   return fullHistory;
 };
 
