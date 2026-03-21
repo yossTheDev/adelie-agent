@@ -23,7 +23,8 @@ export async function generatePlan(
 
   const actionsText = actionsInfo.join("\n");
 
-  const prompt = `
+  // --- PHASE 1: GENERATION PROMPT ---
+  const basePrompt = `
 You are the Strategic Planner for YI Agent. Convert the user request into a precise, deterministic sequence of actions.
 
 CRITICAL FIRST STEP:
@@ -45,7 +46,7 @@ STRICT ARCHITECTURE RULES:
    - When using AI_REPLAN, pass a highly descriptive "originalGoal" and use "$$step_id" for "contextData".
 6. AI_TRANSFORM: Use this ONLY for text/data manipulation (translating, summarizing, analyzing). It returns a string.
 7. WORKER RULE: If the input ALREADY contains a list of items and a goal (e.g., "CONTEXT: ... DATA FOUND: ..."), DO NOT return AI_REPLAN. Generate ATOMIC steps for EACH item.
-9. INFORMATION ACCUMULATION:
+8. INFORMATION ACCUMULATION:
    - When you need to process MULTIPLE items and then give a SINGLE final result (like summarizing several files), use the "Buffer Pattern".
    - Step A: AI_REPLAN to generate steps that use STATE_APPEND for each item.
    - Step B: Use STATE_GET to retrieve the combined string.
@@ -218,28 +219,95 @@ User: CONTEXT: Read each file and use STATE_APPEND with key 'docs_buffer'. DATA 
 User input: ${userInput}
 `;
 
-  const raw = (await callOllama(prompt, undefined, false)) as string;
+  let currentPlanRaw = (await callOllama(
+    basePrompt,
+    undefined,
+    false,
+  )) as string;
 
-  if (true) {
-    console.log("\n[DEBUG] RAW LLM PLANNER:");
-    console.log(raw);
+  console.log(currentPlanRaw);
+
+  // --- PHASE 2: REFLECTION LOOP ---
+  let attempts = 0;
+  const MAX_ATTEMPTS = 3;
+  let isReady = false;
+
+  while (!isReady && attempts < MAX_ATTEMPTS) {
+    const reflectionPrompt = `
+        As a Quality Assurance expert, analyze this plan for CORRECTNESS and MINIMALISM.
+
+        ${basePrompt}
+
+        USER_REQUEST: "${userInput}"
+        PROPOSED_PLAN: ${currentPlanRaw}
+
+        CRITERIA:
+        1. COMPLETENESS: Does it fulfill 100% of the goal?
+        2. DATA PIPING: Is every "$$step_id" referencing a real previous step?
+        3. AI_REPLAN IS MANDATORY when you have a list of items (from FILTER_FILES or LIST_DIR) and you need to perform actions on EACH ONE (like READ_FILE + STATE_APPEND).
+        4. STATE_GET REQUIRES PREVIOUS APPENDS: A plan is INVALID if it uses STATE_GET without a previous loop (AI_REPLAN) that fills that buffer using STATE_APPEND.
+        5. MINIMALISM (CRITICAL): Does the plan contain UNNECESSARY steps?
+           - If the user didn't ask to read a file, don't read it.
+           - If a bulk action (like DELETE_FILES) can do it in one step, don't use AI_REPLAN.
+           - Remove any step that doesn't directly contribute to the final goal.
+        6. ACCUMULATION: If multiple items need a single summary, are STATE_APPEND and STATE_GET used correctly?
+        7. NO INVENTIONS: If an action or argument is not in the AVAILABLE ACTIONS list, the plan is INVALID.
+
+        RESPONSE:
+        - If the plan is PERFECT and MINIMAL, return "READY".
+        - If not, explain ONLY what is missing, wrong, or SUPERFLUOUS (extra).
+      `;
+
+    const feedback = (await callOllama(
+      reflectionPrompt,
+      undefined,
+      false,
+    )) as string;
+
+    if (feedback.includes("READY")) {
+      isReady = true;
+      if (debug)
+        console.log(
+          `\n[DEBUG] Plan verified as READY on attempt ${attempts + 1}`,
+        );
+    } else {
+      attempts++;
+      if (debug)
+        console.log(
+          `\n[DEBUG] Plan needs correction (Attempt ${attempts}): ${feedback}`,
+        );
+
+      // CORRECTION TO THE ORIGINAL PLAN
+      const correctionPrompt = `
+        ${basePrompt}
+
+        ATTENTION: Your previous plan was INCOMPLETE or WRONG.
+        PREVIOUS_PLAN: ${currentPlanRaw}
+        CRITIC_FEEDBACK: ${feedback}
+
+        INSTRUCTION: Generate a NEW, CORRECTED JSON plan.
+        Address the feedback and ensure all steps and data piping are perfect.
+      `;
+
+      currentPlanRaw = (await callOllama(
+        correctionPrompt,
+        undefined,
+        false,
+      )) as string;
+    }
+  }
+
+  if (debug) {
+    console.log("\n[DEBUG] FINAL LLM PLAN:");
+    console.log(currentPlanRaw);
   }
 
   try {
-    const cleanRaw = raw.replace(/```json|```/g, "").trim();
+    const cleanRaw = currentPlanRaw.replace(/```json|```/g, "").trim();
     const parsed = JSON.parse(cleanRaw) as PlanResponse;
-
-    if (parsed.plan && Array.isArray(parsed.plan)) {
-      if (debug) {
-        console.log(`[DEBUG] PLAN GENERATED: ${parsed.plan.length} steps.`);
-      }
-      return parsed.plan;
-    }
-    return [];
+    return parsed.plan || [];
   } catch (e) {
-    if (debug) {
-      console.error("[ERROR] PLANNER PARSE FAILED:", e);
-    }
+    if (debug) console.error("[ERROR] PLANNER PARSE FAILED:", e);
     return [];
   }
 }
