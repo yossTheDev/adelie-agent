@@ -1,9 +1,10 @@
-import readline from "node:readline";
 import chalk from "chalk";
+import readline from "node:readline";
 import ora from "ora";
-import { generateResponse } from "../core/response/response.js";
+
+import { runPlan } from "../core/executor/executor.js";
 import { generatePlan } from "../core/planner/planner.js";
-import { executeAction, runPlan } from "../core/executor/executor.js";
+import { generateResponse } from "../core/response/response.js";
 import type { ExecutionSummary } from "../core/response/types.js";
 
 const rl = readline.createInterface({
