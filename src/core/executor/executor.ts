@@ -25,20 +25,28 @@ const executionContext: Record<string, any> = {};
  * Resolves arguments by replacing "$$id" references with actual values
  * from previous steps stored in the executionContext.
  */
-const resolveArguments = (args: Record<string, any>): Record<string, any> => {
-  const resolved = { ...args };
-
-  for (const [key, value] of Object.entries(resolved)) {
-    if (typeof value === "string" && value.startsWith("$$")) {
-      const refId = value.substring(2); // Remove "$$" prefix
-      // Inject the previous result if it exists in the context
-      if (refId in executionContext) {
-        resolved[key] = executionContext[refId];
-      }
+const resolveArguments = (args: any): any => {
+  if (typeof args === "string") {
+    if (args.startsWith("$$")) {
+      const refId = args.substring(2);
+      return executionContext[refId] ?? args;
     }
+    return args;
   }
 
-  return resolved;
+  if (Array.isArray(args)) {
+    return args.map(resolveArguments);
+  }
+
+  if (typeof args === "object" && args !== null) {
+    const resolved: Record<string, any> = {};
+    for (const [key, value] of Object.entries(args)) {
+      resolved[key] = resolveArguments(value);
+    }
+    return resolved;
+  }
+
+  return args;
 };
 
 /**
@@ -56,6 +64,10 @@ export const executeAction = async (
 
   // Step 1: Deterministic Argument Resolution
   const resolvedArgs = resolveArguments(rawArgs);
+
+  console.log(action);
+  console.log("resolvedArgs context");
+  console.log(resolvedArgs);
 
   if (debug && JSON.stringify(rawArgs) !== JSON.stringify(resolvedArgs)) {
     console.log("[DEBUG] RESOLVED ARGS:", resolvedArgs);
@@ -137,36 +149,79 @@ export const runPlan = async (
   while (i < currentQueue.length) {
     const step = currentQueue[i];
 
-    // Notify UI that a step is starting
     if (onStep) onStep(i, currentQueue.length, step);
 
     try {
       const result = await executeAction(step, debug);
       fullHistory.push(result);
 
-      // Notify UI that a step finished
       if (onStep) onStep(i, currentQueue.length, step, result);
 
       if (!result.success) break;
 
-      // Handle Step Injection
-      if (step.action === "AI_REPLAN") {
-        const rawData =
-          typeof result.result === "string"
-            ? JSON.parse(result.result)
-            : result.result;
-        const newSteps = Array.isArray(rawData) ? rawData : rawData?.plan;
+      if (
+        step.action === "AI_REPLAN" ||
+        (result.result && result.result.plan)
+      ) {
+        let newSteps: Intent[] = [];
+
+        try {
+          const rawData =
+            typeof result.result === "string"
+              ? JSON.parse(result.result)
+              : result.result;
+
+          newSteps = Array.isArray(rawData) ? rawData : rawData?.plan;
+        } catch (e) {
+          if (debug) console.error("[ERROR] Failed to parse REPLAN steps:", e);
+        }
 
         if (Array.isArray(newSteps) && newSteps.length > 0) {
-          currentQueue.splice(i + 1, 0, ...newSteps);
+          const prefix = `${step.id}_`;
+
+          const remapArgs = (args: any): any => {
+            if (typeof args === "string" && args.startsWith("$$")) {
+              const ref = args.substring(2);
+              return `$$${prefix}${ref}`;
+            }
+
+            if (Array.isArray(args)) {
+              return args.map(remapArgs);
+            }
+
+            if (typeof args === "object" && args !== null) {
+              const obj: Record<string, any> = {};
+              for (const key in args) {
+                obj[key] = remapArgs(args[key]);
+              }
+              return obj;
+            }
+
+            return args;
+          };
+
+          const remappedSteps = newSteps.map((s) => ({
+            ...s,
+            id: prefix + s.id,
+            args: remapArgs(s.args),
+          }));
+
+          if (debug)
+            console.log(
+              `[DEBUG] Injecting ${remappedSteps.length} namespaced steps into the queue.`,
+            );
+
+          currentQueue.splice(i + 1, 0, ...remappedSteps);
         }
       }
     } catch (e) {
       if (onStep) onStep(i, currentQueue.length, step, undefined, e);
       break;
     }
+
     i++;
   }
+
   return fullHistory;
 };
 

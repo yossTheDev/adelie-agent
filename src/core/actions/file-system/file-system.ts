@@ -101,8 +101,6 @@ export const copyFile = (src: string, dest: string): ActionResult => {
     if (!fs.existsSync(srcPath))
       return [false, `Source file does not exist: ${src}`];
 
-    if (!fs.existsSync(destPath)) makeDirectory(destPath);
-
     const isDestFile = !!path.extname(destPath);
     const destFolder = isDestFile ? path.dirname(destPath) : destPath;
 
@@ -356,12 +354,15 @@ export const ACTION_DESCRIPTIONS: Record<string, string> = {
   FILTER_FILES:
     "Filters ONLY files in a directory using a regex pattern. Ignores directories.",
   READ_FILE: "Reads the content of a file, returning up to 2000 characters.",
-  WRITE_FILE: "Writes content to a file, creating directories if necessary.",
+  WRITE_FILE:
+    "Writes content to a file. The 'path' MUST be a full file path including directory and filename.",
   MAKE_DIRECTORY:
     "Creates a directory, including any missing parent directories.",
   DELETE_FILE: "Deletes a file or directory safely, with force if needed.",
-  COPY_FILE: "Copies a file from a source path to a destination path.",
-  MOVE_FILE: "Moves a file from a source path to a destination path.",
+  COPY_FILE:
+    "Copies a file from a source path to a destination path. The 'dest' MUST be a full valid file path or an existing directory path. If a directory is provided, the original filename will be preserved. NEVER use plain filenames without a path.",
+  MOVE_FILE:
+    "Moves a file from a source path to a destination path. The 'dest' MUST be a full valid file path or an existing directory path. NEVER use plain filenames without a path.",
   DELETE_DIRECTORY: "Deletes a directory and all its contents recursively.",
   RENAME_FILE: "Renames a file from its current path to a new path.",
   RENAME_DIRECTORY: "Renames a directory from its current path to a new path.",
