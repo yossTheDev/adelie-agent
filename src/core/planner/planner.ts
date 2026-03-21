@@ -329,35 +329,67 @@ User input: ${userInput}
 
   while (!isReady && attempts < MAX_ATTEMPTS) {
     const reflectionPrompt = `
-        As a Quality Assurance expert, analyze this plan for CORRECTNESS and MINIMALISM.
+    You are a deterministic QA optimizer for YI Agent.
 
-        Available Actions:
-        ${actionsText}
+    Your job is to VALIDATE and FIX the proposed plan.
 
-        USER_REQUEST: "${userInput}"
-        PROPOSED_PLAN: ${currentPlanRaw}
+    Available Actions:
+    ${actionsText}
 
-        CRITERIA:
-        1. COMPLETENESS: Does it fulfill 100% of the goal?
-        2. DATA PIPING: Is every "$$step_id" referencing a real previous step?
-        3. AI_REPLAN IS MANDATORY when you have a list of items (from FILTER_FILES or LIST_DIR) and you need to perform actions on EACH ONE (like READ_FILE + STATE_APPEND).
-        4. STATE_GET REQUIRES PREVIOUS APPENDS: A plan is INVALID if it uses STATE_GET without a previous loop (AI_REPLAN) that fills that buffer using STATE_APPEND.
-        5. NEVER use READ_FILE to verify if a file or folder exists, use CHECK_EXISTS instead to verify if a folder or file exists
-        6. MINIMALISM (CRITICAL): Does the plan contain UNNECESSARY steps?
-           - If the user didn't ask to read a file, don't read it.
-           - If a bulk action (like DELETE_FILES) can do it in one step, don't use AI_REPLAN.
-           - Remove any step that doesn't directly contribute to the final goal.
-        7. CONDITIONAL CHECK: If the request contains "If", "When", or "In case", the plan MUST include a LOGIC_GATE. Reject any plan that skips the evaluation step.
-        8. ACCUMULATION: If multiple items need a single summary, are STATE_APPEND and STATE_GET used correctly?
-        9. NO INVENTIONS: If an action or argument is not in the AVAILABLE ACTIONS list, the plan is INVALID.
-        10. NO REPLAN IN SIMPLE CONDITIONS:
-          - If a LOGIC_GATE is followed by a single direct action, the plan is CORRECT.
-          - Reject plans that use AI_REPLAN unnecessarily after LOGIC_GATE.
+    USER_REQUEST: "${userInput}"
+    PROPOSED_PLAN: ${currentPlanRaw}
 
-        RESPONSE:
-        - If the plan is PERFECT and MINIMAL, return "READY".
-        - If not, explain ONLY what is missing, wrong, or SUPERFLUOUS (extra).
-      `;
+    RULES:
+
+    1. PERFECT PLAN:
+    - Return ONLY: READY
+
+    2. PLAN WITH ISSUES:
+    - You MUST return a FULLY CORRECTED plan
+    - Return ONLY valid JSON:
+    {"plan": [...]}
+
+    3. DO NOT RETURN:
+    - Any explanations, text, markdown, or comments
+    - Do NOT repeat the same plan if it is identical to the proposed plan
+
+    VALIDATION CRITERIA:
+
+    - ALL actions MUST exist in AVAILABLE ACTIONS
+    - Replace invalid actions with valid equivalents
+    - If the plan is identical to the proposed plan, return ONLY: READY
+    - Do not regenerate the plan under any circumstance if it's already correct
+    - Fix missing or wrong arguments
+    - Enforce correct DATA PIPING using "$$step_id"
+    - Remove unnecessary steps
+    - Enforce MINIMALISM
+
+    CONDITIONAL RULES:
+
+    - Use LOGIC_GATE for conditions
+    - Pattern: [Action] → [LOGIC_GATE] → [DIRECT ACTION]
+    - NEVER use AI_REPLAN for single actions
+
+    REPLAN RULES:
+
+    - Use AI_REPLAN ONLY for loops or multi-item processing
+    - NEVER for single actions
+
+    STATE RULES:
+
+    - STATE_GET requires previous STATE_APPEND via REPLAN
+
+    PATH RULES:
+
+    - Paths must be valid full paths
+    - NEVER use placeholders like "./contextData"
+
+    STRICT OUTPUT FORMAT:
+
+    - ONLY "READY" if the plan is already perfect
+    - OR a valid JSON object with a "plan" array
+    - DO NOT return the same plan multiple times; if identical, return READY
+    `;
 
     const feedback = (await callOllama(
       reflectionPrompt,
@@ -366,6 +398,39 @@ User input: ${userInput}
     )) as string;
 
     console.log("FEEDBACK", feedback);
+    console.log("current plan", currentPlanRaw.trim());
+
+    function deepEqual(a: any, b: any): boolean {
+      if (Array.isArray(a) && Array.isArray(b)) {
+        if (a.length !== b.length) return false;
+        return a.every((v, i) => deepEqual(v, b[i]));
+      } else if (typeof a === "object" && a && b && typeof b === "object") {
+        const keysA = Object.keys(a);
+        const keysB = Object.keys(b);
+        if (keysA.length !== keysB.length) return false;
+        return keysA.every((k) => deepEqual(a[k], b[k]));
+      }
+      return a === b;
+    }
+
+    const isSamePlan = (planA: string, planB: string) => {
+      try {
+        const a = JSON.parse(planA).plan;
+        const b = JSON.parse(planB).plan;
+        return deepEqual(a, b);
+      } catch {
+        return false;
+      }
+    };
+
+    console.log("is same plan", isSamePlan(currentPlanRaw, feedback));
+
+    if (feedback.includes("READY") || isSamePlan(currentPlanRaw, feedback)) {
+      isReady = true;
+    } else {
+      currentPlanRaw = feedback;
+      attempts++;
+    }
 
     if (feedback.includes("READY")) {
       isReady = true;
