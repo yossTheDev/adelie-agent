@@ -123,8 +123,6 @@ export const moveFile = (src: string, dest: string): ActionResult => {
     if (!fs.existsSync(src))
       return [false, `Source file does not exist: ${src}`];
 
-    if (!fs.existsSync(dest)) makeDirectory(dest);
-
     fs.renameSync(src, dest);
     return [true, `Moved ${src} to ${dest}`];
   } catch (e) {
