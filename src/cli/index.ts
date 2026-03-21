@@ -6,6 +6,7 @@ import { runPlan } from "../core/executor/executor.js";
 import { generatePlan } from "../core/planner/planner.js";
 import { generateResponse } from "../core/response/response.js";
 import type { ExecutionSummary } from "../core/response/types.js";
+import { clearAIContext } from "../core/actions/state/state.js";
 
 const rl = readline.createInterface({
   input: process.stdin,
@@ -103,6 +104,9 @@ const main = async () => {
     }
 
     console.log("\n" + chalk("—".repeat(50)) + "\n");
+
+    // Clear State Buffer
+    clearAIContext();
   }
 
   rl.close();
