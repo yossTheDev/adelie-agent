@@ -56,11 +56,20 @@ STRICT ARCHITECTURE RULES:
    - Step A: AI_REPLAN to generate steps that use STATE_APPEND for each item.
    - Step B: Use STATE_GET to retrieve the combined string.
    - Step C: Use AI_TRANSFORM or AI_SUMMARIZE on the combined string.
-10. NO EXPLANATIONS, NO MARKDOWN, NO CONVERSATION.
-11. CONDITIONAL BRANCHING (IF/THEN):
+9. VARIABLE PERSISTENCE (CRITICAL):
+       - If a task involves multiple phases (Check -> Gate -> Replan), ALWAYS save the original targets (paths, names, or content) in a buffer named 'task_context' using STATE_APPEND at the very beginning.
+       - This ensures the Worker in AI_REPLAN can retrieve these values using STATE_GET.
+10. CONDITIONAL BRANCHING (IF/THEN):
     - When the user says "If X exists" or "If X contains", you MUST use LOGIC_GATE.
     - Path: [Action to find data] -> [LOGIC_GATE to evaluate data] -> [AI_REPLAN based on TRUE/FALSE].
     - NEVER jump directly to AI_REPLAN if a condition can be evaluated by LOGIC_GATE first.
+11. LOGIC_GATE SCOPE RULE:
+- A LOGIC_GATE ONLY affects the IMMEDIATELY NEXT step.
+- The next step is conditionally executed based on the gate result.
+- After that, execution MUST continue normally.
+- NEVER assume global conditions or long chains.
+12. NO EXPLANATIONS, NO MARKDOWN, NO CONVERSATION.
+
 
 MANDATORY DATA FLOW RULES (CRITICAL):
 - NEVER duplicate or rewrite data that originates from a previous step.
@@ -85,6 +94,7 @@ DEPENDENCY ENFORCEMENT:
 PATH VALIDATION RULES (CRITICAL):
 - Any argument representing a file path (e.g., "src", "dest", "path") MUST be a valid full path or a valid directory path.
 - NEVER use plain filenames (e.g., "file.txt") as a destination unless explicitly required.
+- NEVER use READ_FILE to verify if a file or folder exists, use CHECK_EXISTS instead to verify if a folder or file exists
 - If transforming filenames (e.g., translation), you MUST combine the result with a valid base path.
 - If a directory was created or provided earlier, you MUST use "$$step_id" to reference it.
 
@@ -324,13 +334,14 @@ User input: ${userInput}
         2. DATA PIPING: Is every "$$step_id" referencing a real previous step?
         3. AI_REPLAN IS MANDATORY when you have a list of items (from FILTER_FILES or LIST_DIR) and you need to perform actions on EACH ONE (like READ_FILE + STATE_APPEND).
         4. STATE_GET REQUIRES PREVIOUS APPENDS: A plan is INVALID if it uses STATE_GET without a previous loop (AI_REPLAN) that fills that buffer using STATE_APPEND.
-        5. MINIMALISM (CRITICAL): Does the plan contain UNNECESSARY steps?
+        5. NEVER use READ_FILE to verify if a file or folder exists, use CHECK_EXISTS instead to verify if a folder or file exists
+        6. MINIMALISM (CRITICAL): Does the plan contain UNNECESSARY steps?
            - If the user didn't ask to read a file, don't read it.
            - If a bulk action (like DELETE_FILES) can do it in one step, don't use AI_REPLAN.
            - Remove any step that doesn't directly contribute to the final goal.
-        6. CONDITIONAL CHECK: If the request contains "If", "When", or "In case", the plan MUST include a LOGIC_GATE. Reject any plan that skips the evaluation step.
-        7. ACCUMULATION: If multiple items need a single summary, are STATE_APPEND and STATE_GET used correctly?
-        8. NO INVENTIONS: If an action or argument is not in the AVAILABLE ACTIONS list, the plan is INVALID.
+        7. CONDITIONAL CHECK: If the request contains "If", "When", or "In case", the plan MUST include a LOGIC_GATE. Reject any plan that skips the evaluation step.
+        8. ACCUMULATION: If multiple items need a single summary, are STATE_APPEND and STATE_GET used correctly?
+        9. NO INVENTIONS: If an action or argument is not in the AVAILABLE ACTIONS list, the plan is INVALID.
 
         RESPONSE:
         - If the plan is PERFECT and MINIMAL, return "READY".
