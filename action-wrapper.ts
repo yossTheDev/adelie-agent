@@ -27,13 +27,13 @@ subfolders.forEach((folder) => {
 
 const fileContent = `// This file is auto-generated. Do not edit manually.
 ${imports}
-export const ALL_ACTIONS = {
+export const ACTIONS = {
 ${actionsEntries}};
 
-export const ALL_ACTION_ARGS = {
+export const ACTION_ARGS = {
 ${argsEntries}};
 
-export const ALL_ACTION_DESCRIPTIONS = {
+export const ACTION_DESCRIPTIONS = {
 ${descriptionsEntries}};
 `;
 
