@@ -364,7 +364,7 @@ export const ACTION_DESCRIPTIONS: Record<string, string> = {
   MOVE_FILE:
     "Moves a file from a source path to a destination path. The 'dest' MUST be a full valid file path or an existing directory path. NEVER use plain filenames without a path.",
   DELETE_DIRECTORY:
-    "Deletes a directory and all its contents recursively. The 'dest' MUST be a full valid file path or an existing directory path. NEVER use plain filenames without a path.",
+    "Deletes a directory and all its contents recursively. The 'path' MUST be a full valid file path or an existing directory path. NEVER use plain filenames without a path.",
   RENAME_FILE: "Renames a file from its current path to a new path.",
   RENAME_DIRECTORY: "Renames a directory from its current path to a new path.",
   GET_FILE_STATS:

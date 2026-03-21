@@ -129,6 +129,32 @@ User: CONTEXT: The user wanted: "Translate file names to English". DATA FOUND: "
   ]
 }
 
+User: Delete all folders under C:/Documents/test
+
+{
+  "plan": [
+    {"id": "d1", "action": "LIST_DIRECTORIES", "args": {"path": " C:/Documents/test"}},
+    {
+      "id": "replan1",
+      "action": "AI_REPLAN",
+      "args": {
+        "originalGoal": "Delete earch folder under C:/Documents/test",
+        "contextData": "$$d1"
+      }
+    }
+  ]
+}
+
+Replan:
+
+{
+  "plan": [
+    {"id": "d1", "action": "DELETE_DIRECTORY", "args": {"path": " C:/Documents/test/test1"}},
+    {"id": "d1", "action": "DELETE_DIRECTORY", "args": {"path": " C:/Documents/test/test2"}},
+  ]
+}
+
+
 DATA PIPING RULES:
 - Use "$$id" to inject the output of a previous step into the arguments of a current step.
 - NEVER use "$$" inside strings.
@@ -161,7 +187,7 @@ User input: ${userInput}
 
   const raw = (await callOllama(prompt, undefined, false)) as string;
 
-  if (debug) {
+  if (true) {
     console.log("\n[DEBUG] RAW LLM PLANNER:");
     console.log(raw);
   }
