@@ -8,13 +8,46 @@ export const listFiles = (dirPath: string = "."): ActionResult => {
   try {
     if (!fs.existsSync(dirPath)) return [false, "Directory does not exist"];
 
-    const files = fs.readdirSync(dirPath);
+    // Use withFileTypes to easily identify files
+    const entries = fs.readdirSync(dirPath, { withFileTypes: true });
 
-    const fullPaths = files
+    const fullPaths = entries
+      .filter((entry) => entry.isFile())
       .slice(0, 50)
-      .map((file) => path.join(dirPath, file));
+      .map((file) => path.join(dirPath, file.name));
 
     return [true, fullPaths.join(", ")];
+  } catch (e) {
+    return [false, String(e)];
+  }
+};
+
+export const listDirectories = (dirPath: string = "."): ActionResult => {
+  try {
+    if (!fs.existsSync(dirPath)) return [false, "Directory does not exist"];
+    const entries = fs.readdirSync(dirPath, { withFileTypes: true });
+
+    const paths = entries
+      .filter((entry) => entry.isDirectory())
+      .slice(0, 50)
+      .map((dir) => path.join(dirPath, dir.name));
+
+    return [true, paths.join(", ")];
+  } catch (e) {
+    return [false, String(e)];
+  }
+};
+
+export const listAll = (dirPath: string = "."): ActionResult => {
+  try {
+    if (!fs.existsSync(dirPath)) return [false, "Directory does not exist"];
+    const entries = fs.readdirSync(dirPath);
+
+    const paths = entries
+      .slice(0, 50)
+      .map((entry) => path.join(dirPath, entry));
+
+    return [true, paths.join(", ")];
   } catch (e) {
     return [false, String(e)];
   }
@@ -174,23 +207,21 @@ export const filterFiles = (
 ): ActionResult => {
   try {
     if (!fs.existsSync(dirPath)) return [false, "Directory does not exist"];
-
-    const files = fs.readdirSync(dirPath);
+    const entries = fs.readdirSync(dirPath, { withFileTypes: true });
     const regex = new RegExp(pattern, "i");
 
-    const matchedFiles = files
-      .filter((file) => regex.test(file))
-      .map((file) => path.join(dirPath, file));
+    const matched = entries
+      .filter((entry) => entry.isFile() && regex.test(entry.name))
+      .map((file) => path.join(dirPath, file.name));
 
-    if (matchedFiles.length === 0) {
-      return [true, "No files matched the pattern"];
-    }
-
-    return [true, matchedFiles.join(", ")];
+    return matched.length > 0
+      ? [true, matched.join(", ")]
+      : [true, "No files matched the pattern"];
   } catch (e) {
     return [false, String(e)];
   }
 };
+
 /**
  * Utility to parse a comma-separated string or an array of files.
  * This is crucial for data piping from FILTER_FILES.
@@ -275,6 +306,9 @@ export const ACTIONS: Record<
   (args: any) => ActionResult | Promise<ActionResult>
 > = {
   LIST_FILES: (args) => listFiles(args.path || "."),
+  LIST_DIRECTORIES: (args) => listDirectories(args.path || "."),
+  LIST_ALL: (args) => listAll(args.path || "."),
+  FILTER_FILES: (args) => filterFiles(args.path || ".", args.pattern || ""),
   READ_FILE: (args) => readFile(args.path || ""),
   WRITE_FILE: (args) => writeFile(args.path || "", args.content || ""),
   MAKE_DIRECTORY: (args) => makeDirectory(args.path || ""),
@@ -287,7 +321,6 @@ export const ACTIONS: Record<
     renameFileOrDirectory(args.src || "", args.dest || ""),
   GET_FILE_STATS: (args) => getFileStats(args.path || ""),
   GET_DIRECTORY_STATS: (args) => getDirectoryStats(args.path || ""),
-  FILTER_FILES: (args) => filterFiles(args.path || ".", args.pattern || ""),
   DELETE_FILES: (args) => deleteFiles(args.files || ""),
   COPY_FILES: (args) => copyFiles(args.files || "", args.dest || ""),
   MOVE_FILES: (args) => moveFiles(args.files || "", args.dest || ""),
@@ -295,6 +328,9 @@ export const ACTIONS: Record<
 
 export const ACTION_ARGS: Record<string, string[]> = {
   LIST_FILES: ["path"],
+  LIST_DIRECTORIES: ["path"],
+  LIST_ALL: ["path"],
+  FILTER_FILES: ["path", "pattern"],
   READ_FILE: ["path"],
   WRITE_FILE: ["path", "content"],
   MAKE_DIRECTORY: ["path"],
@@ -306,7 +342,6 @@ export const ACTION_ARGS: Record<string, string[]> = {
   RENAME_DIRECTORY: ["src", "dest"],
   GET_FILE_STATS: ["path"],
   GET_DIRECTORY_STATS: ["path"],
-  FILTER_FILES: ["path", "pattern"],
   DELETE_FILES: ["files"],
   COPY_FILES: ["files", "dest"],
   MOVE_FILES: ["files", "dest"],
@@ -314,6 +349,12 @@ export const ACTION_ARGS: Record<string, string[]> = {
 
 export const ACTION_DESCRIPTIONS: Record<string, string> = {
   LIST_FILES: "Lists up to 50 files in a specified directory.",
+  LIST_DIRECTORIES:
+    "Lists up to 50 directories in a specified path (excluding files).",
+  LIST_ALL:
+    "Lists up to 50 entries (both files and directories) in a specified path.",
+  FILTER_FILES:
+    "Filters ONLY files in a directory using a regex pattern. Ignores directories.",
   READ_FILE: "Reads the content of a file, returning up to 2000 characters.",
   WRITE_FILE: "Writes content to a file, creating directories if necessary.",
   MAKE_DIRECTORY:
@@ -328,8 +369,6 @@ export const ACTION_DESCRIPTIONS: Record<string, string> = {
     "Retrieves metadata of a file including size, dates, and type.",
   GET_DIRECTORY_STATS:
     "Retrieves metadata of a directory including file count, total size, and latest modification.",
-  FILTER_FILES:
-    "Filters files in a directory using a regex pattern. Returns a comma-separated list of matches.",
   DELETE_FILES:
     "Deletes multiple files. Accepts a comma-separated string or an array.",
   COPY_FILES:
