@@ -14,6 +14,7 @@ interface PlanResponse {
 export async function generatePlan(
   userInput: string,
   debug: boolean = false,
+  isWorker: boolean = false,
 ): Promise<PlanAction[]> {
   const actionsInfo = Object.entries(ACTION_ARGS).map(([action, args]) => {
     const argsStr = args.length > 0 ? `Args: [${args.join(", ")}]` : "No args";
@@ -52,6 +53,10 @@ STRICT ARCHITECTURE RULES:
    - Step B: Use STATE_GET to retrieve the combined string.
    - Step C: Use AI_TRANSFORM or AI_SUMMARIZE on the combined string.
 9. NO EXPLANATIONS, NO MARKDOWN, NO CONVERSATION.
+10. CONDITIONAL BRANCHING (IF/THEN):
+    - When the user says "If X exists" or "If X contains", you MUST use LOGIC_GATE.
+    - Path: [Action to find data] -> [LOGIC_GATE to evaluate data] -> [AI_REPLAN based on TRUE/FALSE].
+    - NEVER jump directly to AI_REPLAN if a condition can be evaluated by LOGIC_GATE first.
 
 MANDATORY DATA FLOW RULES (CRITICAL):
 - NEVER duplicate or rewrite data that originates from a previous step.
@@ -216,6 +221,47 @@ User: CONTEXT: Read each file and use STATE_APPEND with key 'docs_buffer'. DATA 
   ]
 }
 
+CONDITIONAL EXAMPLES:
+
+User: If the file 'status.txt' contains 'ERROR', delete it.
+{
+  "plan": [
+    {"id": "r1", "action": "READ_FILE", "args": {"path": "./status.txt"}},
+    {"id": "gate1", "action": "LOGIC_GATE", "args": {"condition": "Contains the word ERROR", "data": "$$r1"}},
+    {
+      "id": "decision",
+      "action": "AI_REPLAN",
+      "args": {
+        "originalGoal": "If contextData is 'TRUE', delete ./status.txt. If 'FALSE', do nothing and stop.",
+        "contextData": "$$gate1"
+      }
+    }
+  ]
+}
+
+User: If there is any file starting with 'bye' in C:/Docs, create 'hello.txt' there.
+{
+  "plan": [
+    {"id": "f1", "action": "FILTER_FILES", "args": {"path": "C:/Docs", "pattern": "^bye"}},
+    {
+      "id": "check1",
+      "action": "LOGIC_GATE",
+      "args": {
+        "condition": "The list of files is NOT empty",
+        "data": "$$f1"
+      }
+    },
+    {
+      "id": "decide",
+      "action": "AI_REPLAN",
+      "args": {
+        "originalGoal": "If contextData is 'TRUE', create a file named 'hello.txt' in C:/Docs. If 'FALSE', do nothing.",
+        "contextData": "$$check1"
+      }
+    }
+  ]
+}
+
 User input: ${userInput}
 `;
 
@@ -224,6 +270,18 @@ User input: ${userInput}
     undefined,
     false,
   )) as string;
+
+  // If this is a worker (within a Replan), we don't need QA,
+  // since a Replan is typically a straightforward task.
+  if (isWorker) {
+    try {
+      const cleanRaw = currentPlanRaw.replace(/```json|```/g, "").trim();
+      const parsed = JSON.parse(cleanRaw) as PlanResponse;
+      return parsed.plan || [];
+    } catch (e) {
+      return [];
+    }
+  }
 
   console.log(currentPlanRaw);
 
@@ -250,8 +308,9 @@ User input: ${userInput}
            - If the user didn't ask to read a file, don't read it.
            - If a bulk action (like DELETE_FILES) can do it in one step, don't use AI_REPLAN.
            - Remove any step that doesn't directly contribute to the final goal.
-        6. ACCUMULATION: If multiple items need a single summary, are STATE_APPEND and STATE_GET used correctly?
-        7. NO INVENTIONS: If an action or argument is not in the AVAILABLE ACTIONS list, the plan is INVALID.
+        6. CONDITIONAL CHECK: If the request contains "If", "When", or "In case", the plan MUST include a LOGIC_GATE. Reject any plan that skips the evaluation step.
+        7. ACCUMULATION: If multiple items need a single summary, are STATE_APPEND and STATE_GET used correctly?
+        8. NO INVENTIONS: If an action or argument is not in the AVAILABLE ACTIONS list, the plan is INVALID.
 
         RESPONSE:
         - If the plan is PERFECT and MINIMAL, return "READY".
@@ -263,6 +322,8 @@ User input: ${userInput}
       undefined,
       false,
     )) as string;
+
+    console.log("FEEDBACK", feedback);
 
     if (feedback.includes("READY")) {
       isReady = true;

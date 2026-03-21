@@ -68,9 +68,16 @@ export const aiReplan = async (args: {
       CURRENT STATUS/DATA FOUND: ${args.contextData}
 
       BASED ON THE DATA FOUND, generate the NEXT steps to complete the original goal.
+
+      STRICT RULE:
+      - You are a WORKER, not a planner.
+      - You MUST return ATOMIC ACTIONS (e.g., WRITE_FILE, DELETE_FILE, READ_FILE).
+      - NEVER return "AI_REPLAN" as an action inside your own plan.
+      - If you return AI_REPLAN again, the system will crash.
+      - Provide the FINAL steps to achieve the goal based on the provided contextData
     `;
 
-    const newSteps = await generatePlan(refinedInput, false);
+    const newSteps = await generatePlan(refinedInput, false, true);
 
     if (newSteps.length === 0)
       return [true, "Goal already achieved or no further steps needed."];
