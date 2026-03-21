@@ -65,10 +65,6 @@ export const executeAction = async (
   // Step 1: Deterministic Argument Resolution
   const resolvedArgs = resolveArguments(rawArgs);
 
-  console.log(action);
-  console.log("resolvedArgs context");
-  console.log(resolvedArgs);
-
   if (debug && JSON.stringify(rawArgs) !== JSON.stringify(resolvedArgs)) {
     console.log("[DEBUG] RESOLVED ARGS:", resolvedArgs);
   }

@@ -153,7 +153,7 @@ User input: ${userInput}
 
   const raw = (await callOllama(prompt, undefined, false)) as string;
 
-  if (true) {
+  if (debug) {
     console.log("\n[DEBUG] RAW LLM PLANNER:");
     console.log(raw);
   }
