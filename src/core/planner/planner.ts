@@ -26,6 +26,11 @@ export async function generatePlan(
   const prompt = `
 You are the Strategic Planner for YI Agent. Convert the user request into a precise, deterministic sequence of actions.
 
+CRITICAL FIRST STEP:
+Evaluate if the user input requires executing available actions or if it is a general conversation.
+- If it is a greeting, casual chat, or general question that DOES NOT require the available actions, YOU MUST return exactly: {"plan": []}.
+- ONLY generate a sequence of actions if the request explicitly maps to the capabilities listed below.
+
 AVAILABLE ACTIONS:
 ${actionsText}
 
@@ -63,7 +68,6 @@ DEPENDENCY ENFORCEMENT:
 - Plans that ignore dependencies are INVALID.
 
 PATH VALIDATION RULES (CRITICAL):
-
 - Any argument representing a file path (e.g., "src", "dest", "path") MUST be a valid full path or a valid directory path.
 - NEVER use plain filenames (e.g., "file.txt") as a destination unless explicitly required.
 - If transforming filenames (e.g., translation), you MUST combine the result with a valid base path.
@@ -74,7 +78,13 @@ INVALID:
 
 VALID:
 {"dest": "$$dir1"}
+
 EXAMPLES:
+
+User: Hello, who are you?
+{
+  "plan": []
+}
 
 User: translate all .txt files in the logs folder to English
 {
@@ -112,10 +122,8 @@ User: CONTEXT: The user wanted: "Translate file names to English". DATA FOUND: "
 {
   "plan": [
     {"id": "d1", "action": "MAKE_DIRECTORY", "args": {"path": "C:/translated"}},
-
     {"id": "t1", "action": "AI_TRANSFORM", "args": {"task": "Translate 'Hola.txt' to English", "content": "Hola.txt"}},
     {"id": "c1", "action": "COPY_FILE", "args": {"src": "C:/Hola.txt", "dest": "$$d1"}},
-
     {"id": "t2", "action": "AI_TRANSFORM", "args": {"task": "Translate 'Mundo.txt' to English", "content": "Mundo.txt"}},
     {"id": "c2", "action": "COPY_FILE", "args": {"src": "C:/Mundo.txt", "dest": "$$d1"}}
   ]
