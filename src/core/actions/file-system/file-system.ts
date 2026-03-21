@@ -162,16 +162,95 @@ export const filterFiles = (
     if (!fs.existsSync(dirPath)) return [false, "Directory does not exist"];
 
     const files = fs.readdirSync(dirPath);
-
     const regex = new RegExp(pattern, "i");
 
-    const matchedFiles = files.filter((file) => regex.test(file));
+    const matchedFiles = files
+      .filter((file) => regex.test(file))
+      .map((file) => path.join(dirPath, file));
 
     if (matchedFiles.length === 0) {
       return [true, "No files matched the pattern"];
     }
 
     return [true, matchedFiles.join(", ")];
+  } catch (e) {
+    return [false, String(e)];
+  }
+};
+/**
+ * Utility to parse a comma-separated string or an array of files.
+ * This is crucial for data piping from FILTER_FILES.
+ */
+const parseFileList = (input: any): string[] => {
+  if (Array.isArray(input)) return input;
+  if (typeof input === "string")
+    return input
+      .split(",")
+      .map((f) => f.trim())
+      .filter((f) => f.length > 0);
+  return [];
+};
+
+export const deleteFiles = (filesInput: any): ActionResult => {
+  try {
+    const files = parseFileList(filesInput);
+    if (files.length === 0) return [false, "No files provided to delete"];
+
+    let deletedCount = 0;
+    files.forEach((file) => {
+      if (fs.existsSync(file)) {
+        fs.rmSync(file, { recursive: true, force: true });
+        deletedCount++;
+      }
+    });
+
+    return [
+      true,
+      `Successfully deleted ${deletedCount} of ${files.length} files` +
+        (deletedCount < files.length ? " (some files were not found)" : ""),
+    ];
+  } catch (e) {
+    return [false, String(e)];
+  }
+};
+
+export const copyFiles = (filesInput: any, dest: string): ActionResult => {
+  try {
+    const files = parseFileList(filesInput);
+    if (files.length === 0) return [false, "No files provided to copy"];
+    if (!fs.existsSync(dest)) fs.mkdirSync(dest, { recursive: true });
+
+    let copiedCount = 0;
+    files.forEach((file) => {
+      if (fs.existsSync(file)) {
+        const fileName = path.basename(file);
+        fs.copyFileSync(file, path.join(dest, fileName));
+        copiedCount++;
+      }
+    });
+
+    return [true, `Copied ${copiedCount} files to ${dest}`];
+  } catch (e) {
+    return [false, String(e)];
+  }
+};
+
+export const moveFiles = (filesInput: any, dest: string): ActionResult => {
+  try {
+    const files = parseFileList(filesInput);
+    if (files.length === 0) return [false, "No files provided to move"];
+    if (!fs.existsSync(dest)) fs.mkdirSync(dest, { recursive: true });
+
+    let movedCount = 0;
+    files.forEach((file) => {
+      if (fs.existsSync(file)) {
+        const fileName = path.basename(file);
+        fs.renameSync(file, path.join(dest, fileName));
+        movedCount++;
+      }
+    });
+
+    return [true, `Moved ${movedCount} files to ${dest}`];
   } catch (e) {
     return [false, String(e)];
   }
@@ -195,6 +274,9 @@ export const ACTIONS: Record<
   GET_FILE_STATS: (args) => getFileStats(args.path || ""),
   GET_DIRECTORY_STATS: (args) => getDirectoryStats(args.path || ""),
   FILTER_FILES: (args) => filterFiles(args.path || ".", args.pattern || ""),
+  DELETE_FILES: (args) => deleteFiles(args.files || ""),
+  COPY_FILES: (args) => copyFiles(args.files || "", args.dest || ""),
+  MOVE_FILES: (args) => moveFiles(args.files || "", args.dest || ""),
 };
 
 export const ACTION_ARGS: Record<string, string[]> = {
@@ -211,6 +293,9 @@ export const ACTION_ARGS: Record<string, string[]> = {
   GET_FILE_STATS: ["path"],
   GET_DIRECTORY_STATS: ["path"],
   FILTER_FILES: ["path", "pattern"],
+  DELETE_FILES: ["files"],
+  COPY_FILES: ["files", "dest"],
+  MOVE_FILES: ["files", "dest"],
 };
 
 export const ACTION_DESCRIPTIONS: Record<string, string> = {
@@ -231,4 +316,10 @@ export const ACTION_DESCRIPTIONS: Record<string, string> = {
     "Retrieves metadata of a directory including file count, total size, and latest modification.",
   FILTER_FILES:
     "Filters files in a directory using a regex pattern. Returns a comma-separated list of matches.",
+  DELETE_FILES:
+    "Deletes multiple files. Accepts a comma-separated string or an array.",
+  COPY_FILES:
+    "Copies multiple files to a destination directory. Accepts a comma-separated string or an array.",
+  MOVE_FILES:
+    "Moves multiple files to a destination directory. Accepts a comma-separated string or an array.",
 };
