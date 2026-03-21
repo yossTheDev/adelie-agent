@@ -33,26 +33,51 @@ STRICT ARCHITECTURE RULES:
 1. Return ONLY a JSON object: {"plan": [{"id": "unique_id", "action": "NAME", "args": {...}}]}.
 2. DATA PIPING: To use the output of a previous step, use the syntax "$$step_id" as the argument value.
 3. Every step MUST have a unique "id" (e.g., "step1", "read_file", "process_ai").
+3. DYNAMIC REPLANNING: Use "AI_REPLAN" when an action (like FILTER_FILES) returns a list of items that need individual processing.
+   - "originalGoal": The ultimate goal the user wants to achieve.
+   - "contextData": The dynamic data found (usually a $$ reference).
 4. If a task requires AI processing (translate, summarize, analyze), use the "AI_TRANSFORM" action.
 5. If the request is purely conversational or impossible, return: {"plan": []}.
 6. NO EXPLANATIONS, NO MARKDOWN, NO CONVERSATION.
 
 EXAMPLES:
 
-User: lee notas.txt, tradúcelo a inglés y cópialo al portapapeles
+User: translate all .txt files in the logs folder to Spanish
 {
   "plan": [
-    {"id": "f1", "action": "READ_FILE", "args": {"path": "notas.txt"}},
-    {"id": "a1", "action": "AI_TRANSFORM", "args": {"task": "Translate to English", "content": "$$f1"}},
-    {"id": "c1", "action": "CLIPBOARD_COPY", "args": {"text": "$$a1"}}
+    {"id": "search", "action": "FILTER_FILES", "args": {"path": "./logs", "pattern": "\\.txt$"}},
+    {
+      "id": "bulk_process",
+      "action": "AI_REPLAN",
+      "args": {
+        "originalGoal": "Translate each file found to Spanish and save them",
+        "contextData": "$$search"
+      }
+    }
   ]
 }
 
-User: busca el clima de hoy y guárdalo en clima.txt
+User: read my notes.txt, summarize it and copy it to clipboard
 {
   "plan": [
-    {"id": "web", "action": "BROWSER_SEARCH", "args": {"query": "clima hoy"}},
-    {"id": "save", "action": "WRITE_FILE", "args": {"path": "clima.txt", "content": "$$web"}}
+    {"id": "read", "action": "READ_FILE", "args": {"path": "notes.txt"}},
+    {"id": "sum", "action": "AI_SUMMARIZE", "args": {"content": "$$read"}},
+    {"id": "copy", "action": "CLIPBOARD_COPY", "args": {"text": "$$sum"}}
+  ]
+}
+
+User: find any large .log file and delete them
+{
+  "plan": [
+    {"id": "find", "action": "FILTER_FILES", "args": {"path": ".", "pattern": "\\.log$"}},
+    {
+      "id": "cleanup",
+      "action": "AI_REPLAN",
+      "args": {
+        "originalGoal": "Delete all the log files found in the list",
+        "contextData": "$$find"
+      }
+    }
   ]
 }
 

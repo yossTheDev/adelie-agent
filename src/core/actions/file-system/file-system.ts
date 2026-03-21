@@ -6,8 +6,15 @@ import type { ActionResult } from "../../../types/action-result.js";
 
 export const listFiles = (dirPath: string = "."): ActionResult => {
   try {
+    if (!fs.existsSync(dirPath)) return [false, "Directory does not exist"];
+
     const files = fs.readdirSync(dirPath);
-    return [true, files.slice(0, 50).join(", ")];
+
+    const fullPaths = files
+      .slice(0, 50)
+      .map((file) => path.join(dirPath, file));
+
+    return [true, fullPaths.join(", ")];
   } catch (e) {
     return [false, String(e)];
   }
