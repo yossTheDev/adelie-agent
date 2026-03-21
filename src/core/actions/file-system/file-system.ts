@@ -62,12 +62,38 @@ export const readFile = (filePath: string): ActionResult => {
   }
 };
 
-export const writeFile = (filePath: string, content: string): ActionResult => {
+export const createFile = (
+  filePath: string,
+  content: string = "",
+): ActionResult => {
   try {
     const dir = path.dirname(filePath);
     if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
+
+    if (fs.existsSync(filePath)) {
+      return [
+        false,
+        `Error: File already exists at ${filePath}. Use UPDATE_FILE to change it.`,
+      ];
+    }
+
     fs.writeFileSync(filePath, content, "utf-8");
-    return [true, `File written at ${filePath}`];
+    return [true, `New file created: ${filePath}`];
+  } catch (e) {
+    return [false, String(e)];
+  }
+};
+
+export const updateFile = (filePath: string, content: string): ActionResult => {
+  try {
+    if (!fs.existsSync(filePath)) {
+      return [
+        false,
+        `Error: File ${filePath} does not exist. Use CREATE_FILE first.`,
+      ];
+    }
+    fs.writeFileSync(filePath, content, "utf-8");
+    return [true, `File updated: ${filePath}`];
   } catch (e) {
     return [false, String(e)];
   }
@@ -306,7 +332,8 @@ export const ACTIONS: Record<
   LIST_ALL: (args) => listAll(args.path || "."),
   FILTER_FILES: (args) => filterFiles(args.path || ".", args.pattern || ""),
   READ_FILE: (args) => readFile(args.path || ""),
-  WRITE_FILE: (args) => writeFile(args.path || "", args.content || ""),
+  CREATE_FILE: (args) => createFile(args.path || "", args.content || ""),
+  UPDATE_FILE: (args) => updateFile(args.path || "", args.content || ""),
   MAKE_DIRECTORY: (args) => makeDirectory(args.path || ""),
   DELETE_FILE: (args) => deleteFile(args.path || ""),
   COPY_FILE: (args) => copyFile(args.src || "", args.dest || ""),
@@ -328,7 +355,8 @@ export const ACTION_ARGS: Record<string, string[]> = {
   LIST_ALL: ["path"],
   FILTER_FILES: ["path", "pattern"],
   READ_FILE: ["path"],
-  WRITE_FILE: ["path", "content"],
+  CREATE_FILE: ["path", "content"],
+  UPDATE_FILE: ["path", "content"],
   MAKE_DIRECTORY: ["path"],
   DELETE_FILE: ["path"],
   COPY_FILE: ["src", "dest"],
@@ -352,8 +380,10 @@ export const ACTION_DESCRIPTIONS: Record<string, string> = {
   FILTER_FILES:
     "Filters ONLY files in a directory using a regex pattern. Ignores directories.",
   READ_FILE: "Reads the content of a file, returning up to 2000 characters.",
-  WRITE_FILE:
-    "Writes content to a file. The 'path' MUST be a full file path including directory and filename.",
+  CREATE_FILE:
+    "Creates a NEW file. MANDATORY: Use this ONLY if the file does not exist yet. Fails if file exists.",
+  UPDATE_FILE:
+    "Updates an EXISTING file with new content. MANDATORY: Use this ONLY for files that already exist.",
   MAKE_DIRECTORY:
     "Creates a directory, including any missing parent directories.",
   DELETE_FILE: "Deletes a file or directory safely, with force if needed.",
