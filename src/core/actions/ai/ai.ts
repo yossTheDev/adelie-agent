@@ -72,8 +72,6 @@ export const aiReplan = async (args: {
       STRICT RULE:
       - You are a WORKER, not a planner.
       - You MUST return ATOMIC ACTIONS (e.g., WRITE_FILE, DELETE_FILE, READ_FILE).
-      - NEVER return "AI_REPLAN" as an action inside your own plan.
-      - If you return AI_REPLAN again, the system will crash.
       - Provide the FINAL steps to achieve the goal based on the provided contextData
     `;
 
@@ -94,19 +92,19 @@ export const ACTIONS: Record<
 > = {
   AI_TRANSFORM: (args) => aiTransform(args),
   AI_SUMMARIZE: (args) => aiSummarize(args),
-  AI_REPLAN: (args) => aiReplan(args),
+  //AI_REPLAN: (args) => aiReplan(args),
 };
 
 export const ACTION_ARGS: Record<string, string[]> = {
   AI_TRANSFORM: ["task", "content"],
   AI_SUMMARIZE: ["content"],
-  AI_REPLAN: ["originalGoal", "contextData"],
+  //AI_REPLAN: ["originalGoal", "contextData"],
 };
 
 export const ACTION_DESCRIPTIONS: Record<string, string> = {
   AI_TRANSFORM:
     "Uses AI to transform or process text based on a specific task (e.g., translate, format).",
   AI_SUMMARIZE: "Uses AI to create a concise summary of the provided text.",
-  AI_REPLAN:
-    "Use this when you find a list of items (files, data) and need to generate individual steps for each one to complete the goal.",
+  //AI_REPLAN:
+  //"Use this when you find a list of items (files, data) and need to generate individual steps for each one to complete the goal.",
 };

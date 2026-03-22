@@ -87,6 +87,25 @@ User: repeat reading and appending until all files in ./pending are processed
   ]
 }
 
+User: check if a folder is empty and create files if true
+{
+  "plan": [
+    {"id": "c1", "action": "CHECK_EXISTS", "args": {"path": "C:\\Users\\Documents"}},
+    {"id": "g1", "action": "LOGIC_GATE", "args": {"condition": "Folder is empty", "data": "$$c1"}},
+    {
+      "id": "f1",
+      "action": "FOR_EACH",
+      "args": {
+        "items": ["File1.txt","File2.txt","File3.txt","File4.txt","File5.txt","File6.txt","File7.txt","File8.txt","File9.txt","File10.txt"],
+        "template": [
+          {"id": "create_$$item","action": "CREATE_FILE","args": {"path": "C:\\Users\\Documents\\$$item","content": ""}}
+        ]
+      }
+    }
+  ]
+}
+
+
 KEY RULES:
 - Use COUNT to get number of items
 - Use IS_EMPTY to detect empty lists or results
@@ -94,7 +113,9 @@ KEY RULES:
 - FOR_EACH executes a template per item in a list; $$item refers to the current element
 - IF allows conditional execution based on boolean results or logical conditions
 - WHILE allows repeated execution while a condition is TRUE; beware infinite loops
+- LOGIC_GATE triggers execution of the immediately next step based on TRUE/FALSE
 - Combine with STATE_APPEND and STATE_GET to accumulate results across loops or conditionals
-- Avoid AI_REPLAN; FOR_EACH + IF + WHILE replace most use cases previously needing replanning
+- CHECK_EXISTS should be used before modifying files or directories
+- CREATE_FILE, UPDATE_FILE, DELETE_FILE must be guarded by LOGIC_GATE if conditional
 `;
 };

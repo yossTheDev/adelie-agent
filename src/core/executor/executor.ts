@@ -61,15 +61,12 @@ export const executeAction = async (
 
   const action = intent.action;
   const rawArgs = intent.args || {};
-
-  // Step 1: Deterministic Argument Resolution
   const resolvedArgs = resolveArguments(rawArgs);
 
   if (debug && JSON.stringify(rawArgs) !== JSON.stringify(resolvedArgs)) {
     console.log("[DEBUG] RESOLVED ARGS:", resolvedArgs);
   }
 
-  // Handle Unknown or Empty Actions
   if (action === "UNKNOWN" || action === "NONE") {
     return {
       id: intent.id,
@@ -80,7 +77,50 @@ export const executeAction = async (
     };
   }
 
-  // Verify if action is implemented
+  if (action === "FOR_EACH") {
+    const items = resolvedArgs.items || [];
+    const template: Intent[] = resolvedArgs.template || [];
+    for (const item of items) {
+      for (const t of template) {
+        const cloned: Intent = {
+          ...t,
+          args: { ...t.args, item },
+          id: `${intent.id}_${t.id}_${item}`,
+        };
+        await executeAction(cloned, debug);
+      }
+    }
+    return { id: intent.id, success: true, action, args: resolvedArgs };
+  }
+
+  if (action === "IF") {
+    const condition = resolvedArgs.condition;
+    const thenSteps: Intent[] = resolvedArgs.then || [];
+    const elseSteps: Intent[] = resolvedArgs.else || [];
+    const conditionMet = executionContext[condition] ?? false;
+    const selectedSteps = conditionMet ? thenSteps : elseSteps;
+    for (const s of selectedSteps) await executeAction(s, debug);
+    return { id: intent.id, success: true, action, args: resolvedArgs };
+  }
+
+  if (action === "WHILE") {
+    const conditionKey = resolvedArgs.condition;
+    const body: Intent[] = resolvedArgs.body || [];
+    let loopCounter = 0;
+    while (executionContext[conditionKey] ?? false) {
+      for (const b of body) {
+        const cloned: Intent = {
+          ...b,
+          id: `${intent.id}_loop${loopCounter}_${b.id}`,
+        };
+        await executeAction(cloned, debug);
+      }
+      loopCounter++;
+      if (loopCounter > 1000) break;
+    }
+    return { id: intent.id, success: true, action, args: resolvedArgs };
+  }
+
   if (!(action in ACTIONS)) {
     return {
       id: intent.id,
@@ -92,26 +132,9 @@ export const executeAction = async (
   }
 
   try {
-    // Step 2: Pure Function Execution
     const [success, result] = await ACTIONS[action](resolvedArgs);
-
-    // Step 3: Save result to context for potential data piping in future steps
-    if (success) {
-      executionContext[intent.id] = result;
-    }
-
-    const executionResult: ExecutionResult = {
-      id: intent.id,
-      success,
-      result,
-      action,
-      args: resolvedArgs,
-    };
-
-    if (debug)
-      console.log("[DEBUG] EXECUTION RESULT:", success ? "SUCCESS" : "FAILED");
-
-    return executionResult;
+    if (success) executionContext[intent.id] = result;
+    return { id: intent.id, success, result, action, args: resolvedArgs };
   } catch (error) {
     return {
       id: intent.id,
