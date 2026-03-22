@@ -34,18 +34,6 @@ export async function generatePlan(
     false,
   )) as string;
 
-  // If this is a worker (within a Replan), we don't need QA,
-  // since a Replan is typically a straightforward task.
-  if (isWorker) {
-    try {
-      const cleanRaw = currentPlanRaw.replace(/```json|```/g, "").trim();
-      const parsed = JSON.parse(cleanRaw) as PlanResponse;
-      return parsed.plan || [];
-    } catch (e) {
-      return [];
-    }
-  }
-
   let parsed: PlanResponse | null = null;
 
   try {
@@ -61,9 +49,6 @@ export async function generatePlan(
     if (debug) console.log("[DEBUG] Empty plan detected → skipping QA");
     return [];
   }
-
-  // --- PHASE 2: REFLECTION LOOP ---
-  // currentPlanRaw = await newFunction(actionsText, userInput, currentPlanRaw, debug, basePrompt);
 
   if (debug) {
     console.log("\n[DEBUG] FINAL LLM PLAN:");
