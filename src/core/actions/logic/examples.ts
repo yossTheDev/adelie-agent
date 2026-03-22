@@ -115,7 +115,5 @@ KEY RULES:
 - WHILE allows repeated execution while a condition is TRUE; beware infinite loops
 - LOGIC_GATE triggers execution of the immediately next step based on TRUE/FALSE
 - Combine with STATE_APPEND and STATE_GET to accumulate results across loops or conditionals
-- CHECK_EXISTS should be used before modifying files or directories
-- CREATE_FILE, UPDATE_FILE, DELETE_FILE must be guarded by LOGIC_GATE if conditional
 `;
 };

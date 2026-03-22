@@ -400,7 +400,7 @@ export const ACTION_ARGS: Record<string, string[]> = {
 
 export const ACTION_DESCRIPTIONS: Record<string, string> = {
   CHECK_EXISTS:
-    "Checks if a single file or directory exists. Returns 'TRUE' or 'FALSE'. Use this before CREATE_FILE or UPDATE_FILE.",
+    "Checks if a single file or directory exists. Returns 'TRUE' or 'FALSE'.",
   CHECK_ALL_EXIST:
     "Checks if a list of files or directories all exist. Returns 'TRUE' only if ALL exist, otherwise 'FALSE'.",
   LIST_FILES: "Lists up to 50 files in a specified directory.",

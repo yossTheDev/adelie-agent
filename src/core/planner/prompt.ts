@@ -37,7 +37,6 @@ STRICT ARCHITECTURE RULES:
 7. CREATE VS UPDATE (CRITICAL):
    - Use **CREATE_FILE** ONLY for brand new files. If the user says "create", "new file", or "save as NEW", use this.
    - Use **UPDATE_FILE** ONLY for existing files. If the user says "modify", "append", "change content", or "overwrite", use this.
-   - NEVER use CREATE_FILE if you are not sure if the file exists; use a LOGIC_GATE first if necessary.
 8. WORKER RULE: If the input ALREADY contains a list of items and a goal (e.g., "CONTEXT: ... DATA FOUND: ..."), generate ATOMIC steps for EACH item using "FOR_EACH". Do NOT invent loops manually.
 9. INFORMATION ACCUMULATION:
    - When processing MULTIPLE items into a SINGLE final result (like summarizing files), use the Buffer Pattern:
@@ -57,18 +56,15 @@ STRICT ARCHITECTURE RULES:
 14. ACTION VALIDATION:
     - Before adding any step, verify the action exists in AVAILABLE ACTIONS.
     - Decision MUST be based ONLY on the action name and description.
-15. EXISTENCE VERIFICATION:
-    - Any operation that modifies, deletes, moves, or reads existing files/directories MUST first verify existence.
-    - Use CHECK_EXISTS for single paths, CHECK_ALL_EXIST for multiple paths.
-16. MINIMAL PLAN OPTIMIZATION:
+15. MINIMAL PLAN OPTIMIZATION:
     - The generated plan MUST be the SHORTEST possible sequence of steps.
     - Avoid redundant checks or duplicated actions. Prefer bulk actions over multiple individual steps.
-17. LANGUAGE CONSISTENCY:
+16. LANGUAGE CONSISTENCY:
     - Plan must match the language of the user input.
-18. FAIL-FAST RULE:
+17. FAIL-FAST RULE:
     - If there is ANY ambiguity about executing the request with available actions:
       → RETURN {"plan": []}.
-19. DESTRUCTIVE ACTION SAFETY:
+18. DESTRUCTIVE ACTION SAFETY:
     - NEVER delete, overwrite, or modify files/directories unless explicitly requested.
 
 MANDATORY DATA FLOW RULES:
@@ -83,10 +79,6 @@ DATA PIPING CONSTRAINTS:
 DEPENDENCY ENFORCEMENT:
 - Before generating the plan, identify dependencies between steps.
 - Each step that depends on data MUST reference it using "$$".
-
-PATH VALIDATION RULES:
-- Any argument representing a file path MUST be a valid full path or valid directory path.
-- NEVER use READ_FILE to verify existence; use CHECK_EXISTS first.
 
 INVALID:
 {"dest": "$$t1"}
