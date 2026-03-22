@@ -8,8 +8,6 @@ import { getStateExamples } from "../actions/state/examples.js";
 export const getExamples = () => {
   `EXAMPLES:
 
-
-
   ${getLogicExamples()}
 `;
 };
