@@ -323,6 +323,30 @@ User input: ${userInput}
   }
 
   // --- PHASE 2: REFLECTION LOOP ---
+  // currentPlanRaw = await newFunction(actionsText, userInput, currentPlanRaw, debug, basePrompt);
+
+  if (debug) {
+    console.log("\n[DEBUG] FINAL LLM PLAN:");
+    console.log(currentPlanRaw);
+  }
+
+  try {
+    const cleanRaw = currentPlanRaw.replace(/```json|```/g, "").trim();
+    const parsed = JSON.parse(cleanRaw) as PlanResponse;
+    return parsed.plan || [];
+  } catch (e) {
+    if (debug) console.error("[ERROR] PLANNER PARSE FAILED:", e);
+    return [];
+  }
+}
+
+async function reflection(
+  actionsText: string,
+  userInput: string,
+  currentPlanRaw: string,
+  debug: boolean,
+  basePrompt: string,
+) {
   let attempts = 0;
   const MAX_ATTEMPTS = 3;
   let isReady = false;
@@ -358,7 +382,6 @@ User input: ${userInput}
     - ALL actions MUST exist in AVAILABLE ACTIONS
     - Replace invalid actions with valid equivalents
     - If the plan is identical to the proposed plan, return ONLY: READY
-    - Do not regenerate the plan under any circumstance if it's already correct
     - Fix missing or wrong arguments
     - Enforce correct DATA PIPING using "$$step_id"
     - Remove unnecessary steps
@@ -417,6 +440,8 @@ User input: ${userInput}
       try {
         const a = JSON.parse(planA).plan;
         const b = JSON.parse(planB).plan;
+
+        console.log(a);
         return deepEqual(a, b);
       } catch {
         return false;
@@ -464,18 +489,5 @@ User input: ${userInput}
       )) as string;
     }
   }
-
-  if (debug) {
-    console.log("\n[DEBUG] FINAL LLM PLAN:");
-    console.log(currentPlanRaw);
-  }
-
-  try {
-    const cleanRaw = currentPlanRaw.replace(/```json|```/g, "").trim();
-    const parsed = JSON.parse(cleanRaw) as PlanResponse;
-    return parsed.plan || [];
-  } catch (e) {
-    if (debug) console.error("[ERROR] PLANNER PARSE FAILED:", e);
-    return [];
-  }
+  return currentPlanRaw;
 }
