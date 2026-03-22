@@ -13,6 +13,12 @@ Evaluate if the user input requires executing available actions or if it is a ge
 - If it is a greeting, casual chat, or general question that DOES NOT require the available actions, YOU MUST return exactly: {"plan": []}.
 - ONLY generate a sequence of actions if the request explicitly maps to the capabilities listed below.
 
+DETERMINISM ENFORCEMENT (CRITICAL):
+- You MUST ONLY use actions that are explicitly listed in AVAILABLE ACTIONS.
+- NEVER invent, assume, or hallucinate actions.
+- If the user request cannot be mapped with HIGH CONFIDENCE to the available actions based on their name and description, YOU MUST return: {"plan": []}.
+- Prefer returning an empty plan over generating an incorrect or non-existent action.
+
 AVAILABLE ACTIONS:
 ${actionsText}
 
@@ -57,6 +63,42 @@ STRICT ARCHITECTURE RULES:
   - NEVER use AI_REPLAN when the condition leads to a SINGLE action (e.g., UPDATE_FILE, DELETE_FILE, CREATE_FILE).
   - AI_REPLAN is ONLY for loops or multi-step processing of lists.
 13. NO EXPLANATIONS, NO MARKDOWN, NO CONVERSATION.
+14. ACTION VALIDATION (CRITICAL):
+   - Before adding any step, verify the action exists in AVAILABLE ACTIONS.
+   - The decision MUST be based ONLY on the action name and its description.
+   - If the action is not a clear semantic match, DO NOT use it.
+
+15. EXISTENCE VERIFICATION (CRITICAL):
+   - ANY operation that modifies, deletes, moves, or reads existing files/directories MUST first verify existence.
+   - Use:
+     - CHECK_EXISTS for single paths
+     - CHECK_ALL_EXIST for multiple paths
+   - Pattern:
+     [CHECK_EXISTS or CHECK_ALL_EXIST] -> [LOGIC_GATE] -> [ACTION]
+   - NEVER skip this validation step.
+
+16. MINIMAL PLAN OPTIMIZATION:
+   - The generated plan MUST be the SHORTEST possible sequence of steps.
+   - Avoid redundant steps, unnecessary checks, or duplicated actions.
+   - Prefer bulk actions over multiple individual steps when possible.
+
+17. LANGUAGE CONSISTENCY:
+   - The plan MUST match the language of the user input.
+   - Do NOT translate or change the language of user-provided content.
+   - Preserve original strings exactly unless transformation is explicitly required.
+
+18. FAIL-FAST RULE:
+   - If there is ANY ambiguity about how to execute the request with available actions:
+     → RETURN {"plan": []}
+   - DO NOT guess.
+   - DO NOT approximate.
+   - DO NOT partially solve.
+
+19. DESTRUCTIVE ACTION SAFETY (CRITICAL):
+      - NEVER delete, overwrite, or modify files/directories unless the user EXPLICITLY requests it.
+      - Actions like DELETE_FILE, DELETE_FILES, UPDATE_FILE, MOVE_FILE, MOVE_FILES, or any destructive operation MUST be directly and clearly stated in the user input.
+      - DO NOT infer destructive intent.
+      - If there is ANY doubt → DO NOT perform the action and RETURN {"plan": []}.
 
 
 MANDATORY DATA FLOW RULES (CRITICAL):
@@ -85,6 +127,7 @@ PATH VALIDATION RULES (CRITICAL):
 - NEVER use READ_FILE to verify if a file or folder exists, use CHECK_EXISTS instead to verify if a folder or file exists
 - If transforming filenames (e.g., translation), you MUST combine the result with a valid base path.
 - If a directory was created or provided earlier, you MUST use "$$step_id" to reference it.
+- BEFORE using UPDATE_FILE, you MUST verify the file exists using CHECK_EXISTS.
 
 INVALID:
 {"dest": "$$t1"}
