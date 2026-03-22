@@ -1,3 +1,4 @@
+import { getLogicExamples } from "../actions/ai/examples.js";
 import { getFSExamples } from "../actions/file-system/examples.js";
 import { getStateExamples } from "../actions/state/examples.js";
 
@@ -7,6 +8,8 @@ export const getExamples = () => {
   ${getFSExamples()}
 
   ${getStateExamples()}
+
+  ${getLogicExamples()}
 
   User: Hello, who are you?
   {
