@@ -4,10 +4,9 @@ import { getStateExamples } from "../actions/state/examples.js";
 
 // ${getStateExamples()}
 // ${getFSExamples()}
-
+// ${getLogicExamples()}
 export const getExamples = () => {
   `EXAMPLES:
 
-  ${getLogicExamples()}
 `;
 };

@@ -38,33 +38,26 @@ STRICT ARCHITECTURE RULES:
    - Use **CREATE_FILE** ONLY for brand new files. If the user says "create", "new file", or "save as NEW", use this.
    - Use **UPDATE_FILE** ONLY for existing files. If the user says "modify", "append", "change content", or "overwrite", use this.
 8. WORKER RULE: If the input ALREADY contains a list of items and a goal (e.g., "CONTEXT: ... DATA FOUND: ..."), generate ATOMIC steps for EACH item using "FOR_EACH". Do NOT invent loops manually.
-9. INFORMATION ACCUMULATION:
-   - When processing MULTIPLE items into a SINGLE final result (like summarizing files), use the Buffer Pattern:
-     - Step A: FOR_EACH to read/process each item and append results with STATE_APPEND.
-     - Step B: Use STATE_GET to retrieve the combined content.
-     - Step C: Use AI_TRANSFORM or AI_SUMMARIZE on the combined data.
-10. VARIABLE PERSISTENCE:
-    - If a task involves multiple phases, ALWAYS save the original targets (paths, names, or content) in a buffer using STATE_APPEND at the beginning.
-11. CONDITIONAL EXECUTION:
+9. CONDITIONAL EXECUTION:
     - When the user specifies a condition (e.g., "if", "when"), use LOGIC_GATE.
     - Pattern: [Action to get data] -> [LOGIC_GATE] -> [DIRECT ACTION]
     - The planner MUST assume the executor will skip the next step if the condition is FALSE.
-12. LOGIC_GATE SCOPE:
+10. LOGIC_GATE SCOPE:
     - A LOGIC_GATE ONLY affects the IMMEDIATELY NEXT step.
     - After that, execution continues normally.
-13. NO EXPLANATIONS, NO MARKDOWN, NO CONVERSATION.
-14. ACTION VALIDATION:
+11. NO EXPLANATIONS, NO MARKDOWN, NO CONVERSATION.
+12. ACTION VALIDATION:
     - Before adding any step, verify the action exists in AVAILABLE ACTIONS.
     - Decision MUST be based ONLY on the action name and description.
-15. MINIMAL PLAN OPTIMIZATION:
+13. MINIMAL PLAN OPTIMIZATION:
     - The generated plan MUST be the SHORTEST possible sequence of steps.
     - Avoid redundant checks or duplicated actions. Prefer bulk actions over multiple individual steps.
-16. LANGUAGE CONSISTENCY:
+14. LANGUAGE CONSISTENCY:
     - Plan must match the language of the user input.
-17. FAIL-FAST RULE:
+15. FAIL-FAST RULE:
     - If there is ANY ambiguity about executing the request with available actions:
       → RETURN {"plan": []}.
-18. DESTRUCTIVE ACTION SAFETY:
+16. DESTRUCTIVE ACTION SAFETY:
     - NEVER delete, overwrite, or modify files/directories unless explicitly requested.
 
 MANDATORY DATA FLOW RULES:
