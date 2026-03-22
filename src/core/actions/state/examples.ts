@@ -1,5 +1,5 @@
 export const getStateExamples = () => {
-  return `STATE MANAGEMENT EXAMPLES (NEW FORMAT):
+  return `STATE MANAGEMENT EXAMPLES:
 
 User: read all .txt files in ./docs and give me a single summary
 {

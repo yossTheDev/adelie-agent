@@ -6,9 +6,8 @@ import type { ActionResult } from "../../../types/action-result.js";
 
 export const listFiles = (dirPath: string = "."): ActionResult => {
   try {
-    if (!fs.existsSync(dirPath)) return [false, "Directory does not exist"];
+    if (!fs.existsSync(dirPath)) return [false, JSON.stringify([])];
 
-    // Use withFileTypes to easily identify files
     const entries = fs.readdirSync(dirPath, { withFileTypes: true });
 
     const fullPaths = entries
@@ -16,9 +15,9 @@ export const listFiles = (dirPath: string = "."): ActionResult => {
       .slice(0, 50)
       .map((file) => path.join(dirPath, file.name));
 
-    return [true, fullPaths.join(", ")];
+    return [true, JSON.stringify(fullPaths)];
   } catch (e) {
-    return [false, String(e)];
+    return [false, JSON.stringify([])];
   }
 };
 
@@ -200,6 +199,7 @@ export const getFileStats = (filePath: string): ActionResult => {
 
 export const getDirectoryStats = (dirPath: string): ActionResult => {
   try {
+    console.log(dirPath);
     if (!fs.existsSync(dirPath) || !fs.statSync(dirPath).isDirectory())
       return [false, "Directory does not exist"];
     const files = fs.readdirSync(dirPath);
@@ -228,7 +228,8 @@ export const filterFiles = (
   pattern: string = "",
 ): ActionResult => {
   try {
-    if (!fs.existsSync(dirPath)) return [false, "Directory does not exist"];
+    if (!fs.existsSync(dirPath)) return [false, JSON.stringify([])];
+
     const entries = fs.readdirSync(dirPath, { withFileTypes: true });
     const regex = new RegExp(pattern, "i");
 
@@ -236,11 +237,9 @@ export const filterFiles = (
       .filter((entry) => entry.isFile() && regex.test(entry.name))
       .map((file) => path.join(dirPath, file.name));
 
-    return matched.length > 0
-      ? [true, matched.join(", ")]
-      : [true, "No files matched the pattern"];
+    return [true, JSON.stringify(matched)];
   } catch (e) {
-    return [false, String(e)];
+    return [false, JSON.stringify([])];
   }
 };
 

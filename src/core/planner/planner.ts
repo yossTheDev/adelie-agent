@@ -70,6 +70,8 @@ export async function generatePlan(
     console.log(currentPlanRaw);
   }
 
+  console.log(currentPlanRaw);
+
   try {
     const cleanRaw = currentPlanRaw.replace(/```json|```/g, "").trim();
     const parsed = JSON.parse(cleanRaw) as PlanResponse;

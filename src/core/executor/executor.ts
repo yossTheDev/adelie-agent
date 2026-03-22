@@ -79,6 +79,7 @@ export const executeAction = async (
 
   if (action === "FOR_EACH") {
     const items = resolvedArgs.items || [];
+    console.log(items);
     const template: Intent[] = resolvedArgs.template || [];
     for (const item of items) {
       for (const t of template) {
