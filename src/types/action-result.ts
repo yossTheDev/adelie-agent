@@ -1,1 +1,1 @@
-export type ActionResult = [boolean, string];
+export type ActionResult = [boolean, any];

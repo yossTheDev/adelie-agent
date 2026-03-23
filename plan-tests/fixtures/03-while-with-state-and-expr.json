@@ -1,0 +1,22 @@
+{
+  "name": "WHILE with deterministic expression false",
+  "plan": [
+    {
+      "id": "loop",
+      "action": "WHILE",
+      "args": {
+        "condition": "AND(TRUE,FALSE)",
+        "body": [
+          {
+            "id": "should_not_happen",
+            "action": "CREATE_FILE",
+            "args": {
+              "path": "__ROOT__\\logic\\while-created.txt",
+              "content": "This file should never be created"
+            }
+          }
+        ]
+      }
+    }
+  ]
+}

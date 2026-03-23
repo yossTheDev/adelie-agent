@@ -52,17 +52,44 @@ export const stateGet = (args: { key: string }): ActionResult => {
   }
 };
 
+export const stateSet = (args: { key: string; content: string }): ActionResult => {
+  try {
+    if (!args.key) return [false, "Missing key for STATE_SET"];
+    memoryBuffer[args.key] = [String(args.content ?? "")];
+    return [true, `Set '${args.key}' with 1 value`];
+  } catch (e) {
+    return [false, `STATE_SET Error: ${String(e)}`];
+  }
+};
+
+export const stateClear = (args: { key?: string }): ActionResult => {
+  try {
+    if (args.key) {
+      delete memoryBuffer[args.key];
+      return [true, `Cleared '${args.key}'`];
+    }
+    memoryBuffer = {};
+    return [true, "Cleared all state keys"];
+  } catch (e) {
+    return [false, `STATE_CLEAR Error: ${String(e)}`];
+  }
+};
+
 export const ACTIONS: Record<
   string,
   (args: any) => ActionResult | Promise<ActionResult>
 > = {
   STATE_APPEND: (args) => stateAppend(args),
   STATE_GET: (args) => stateGet(args),
+  STATE_SET: (args) => stateSet(args),
+  STATE_CLEAR: (args) => stateClear(args),
 };
 
 export const ACTION_ARGS: Record<string, string[]> = {
   STATE_APPEND: ["key", "content"],
   STATE_GET: ["key"],
+  STATE_SET: ["key", "content"],
+  STATE_CLEAR: ["key"],
 };
 
 export const ACTION_DESCRIPTIONS: Record<string, string> = {
@@ -70,4 +97,6 @@ export const ACTION_DESCRIPTIONS: Record<string, string> = {
     "Saves text into a temporary named buffer. Use this to collect info from multiple sources/files.",
   STATE_GET:
     "Retrieves all text collected in a buffer as a single combined string.",
+  STATE_SET: "Overwrites a state key with a single value.",
+  STATE_CLEAR: "Clears one state key or all keys if none is provided.",
 };

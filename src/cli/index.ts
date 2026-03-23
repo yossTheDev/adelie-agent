@@ -8,8 +8,19 @@ import { generatePlan } from "../core/planner/planner.js";
 import { generateResponse } from "../core/response/response.js";
 import type { ExecutionSummary } from "../core/response/types.js";
 import { clearAIContext } from "../core/actions/state/state.js";
-import { MODEL } from "../core/config.js";
 import { ACTION_ARGS } from "../core/actions/actions.js";
+import {
+  getAgentConfigPaths,
+  readAgentConfig,
+  resetAgentConfig,
+  writeAgentConfig,
+} from "../core/config/agent-config.js";
+import {
+  getMcpConfigPath,
+  installMcpServer,
+  listMcpServers,
+  removeMcpServer,
+} from "../core/config/mcp-config.js";
 
 const rl = readline.createInterface({
   input: process.stdin,
@@ -61,6 +72,7 @@ const renderPlan = (steps: any[]): void => {
 };
 
 const getBanner = (): string => {
+  const cfg = readAgentConfig();
   const actionCount = Object.keys(ACTION_ARGS).length;
   const ascii = `
 ██╗   ██╗██╗
@@ -74,7 +86,7 @@ const getBanner = (): string => {
   const content = [
     chalk.cyanBright.bold(ascii.trimEnd()),
     "",
-    `${chalk.whiteBright("Model:")} ${chalk.greenBright(MODEL)}`,
+    `${chalk.whiteBright("Model:")} ${chalk.greenBright(cfg.model)}`,
     `${chalk.whiteBright("Functions:")} ${chalk.magentaBright(String(actionCount))}`,
     `${chalk.whiteBright("Mode:")} ${chalk.yellowBright("Deterministic Planner + Executor")}`,
   ].join("\n");
@@ -89,7 +101,111 @@ const getBanner = (): string => {
   });
 };
 
-const main = async () => {
+const handleConfigCommand = (args: string[]) => {
+  const [subcommand, ...rest] = args;
+  const paths = getAgentConfigPaths();
+
+  if (!subcommand || subcommand === "show") {
+    const cfg = readAgentConfig();
+    console.log(chalk.cyanBright("Current config:"));
+    console.log(JSON.stringify(cfg, null, 2));
+    console.log(chalk.gray(`Path: ${paths.configPath}`));
+    return;
+  }
+
+  if (subcommand === "path") {
+    console.log(paths.configPath);
+    return;
+  }
+
+  if (subcommand === "reset") {
+    const cfg = resetAgentConfig();
+    console.log(chalk.green("Config reset to defaults."));
+    console.log(JSON.stringify(cfg, null, 2));
+    return;
+  }
+
+  if (subcommand === "set") {
+    const [key, ...valueParts] = rest;
+    const valueRaw = valueParts.join(" ").trim();
+    if (!key || !valueRaw) {
+      console.log(
+        chalk.yellow("Usage: yi config set <model|ollama_url|debug|max_loop_iterations|language> <value>"),
+      );
+      return;
+    }
+
+    let value: string | boolean | number = valueRaw;
+    if (key === "debug") value = valueRaw.toLowerCase() === "true";
+    if (key === "max_loop_iterations") value = Number(valueRaw);
+
+    const next = writeAgentConfig({ [key]: value } as any);
+    console.log(chalk.green(`Updated '${key}'.`));
+    console.log(JSON.stringify(next, null, 2));
+    return;
+  }
+
+  console.log(chalk.yellow("Unknown config command."));
+};
+
+const handleMcpCommand = (args: string[]) => {
+  const [subcommand, ...rest] = args;
+
+  if (!subcommand || subcommand === "list") {
+    const servers = listMcpServers();
+    console.log(chalk.cyanBright("MCP servers:"));
+    if (servers.length === 0) {
+      console.log(chalk.gray("No MCP servers installed."));
+    } else {
+      for (const s of servers) {
+        console.log(
+          `- ${chalk.magenta(s.name)} -> ${chalk.white(
+            `${s.command} ${s.args.join(" ")}`.trim(),
+          )}`,
+        );
+      }
+    }
+    console.log(chalk.gray(`Path: ${getMcpConfigPath()}`));
+    return;
+  }
+
+  if (subcommand === "install") {
+    const [name, command, ...commandArgs] = rest;
+    if (!name || !command) {
+      console.log(
+        chalk.yellow("Usage: yi mcp install <name> <command> [args...]"),
+      );
+      return;
+    }
+    const server = installMcpServer({ name, command, commandArgs });
+    console.log(chalk.green(`Installed MCP '${server.name}'.`));
+    return;
+  }
+
+  if (subcommand === "remove") {
+    const [name] = rest;
+    if (!name) {
+      console.log(chalk.yellow("Usage: yi mcp remove <name>"));
+      return;
+    }
+    const removed = removeMcpServer(name);
+    console.log(
+      removed
+        ? chalk.green(`Removed MCP '${name}'.`)
+        : chalk.yellow(`MCP '${name}' was not found.`),
+    );
+    return;
+  }
+
+  if (subcommand === "path") {
+    console.log(getMcpConfigPath());
+    return;
+  }
+
+  console.log(chalk.yellow("Unknown MCP command."));
+};
+
+const startInteractiveCli = async () => {
   console.log(getBanner());
   console.log(chalk.gray("Type 'exit' to quit\n"));
 
@@ -178,6 +294,23 @@ const main = async () => {
   }
 
   rl.close();
+};
+
+const main = async () => {
+  const [, , command, ...args] = process.argv;
+  if (command === "config") {
+    handleConfigCommand(args);
+    rl.close();
+    return;
+  }
+
+  if (command === "mcp") {
+    handleMcpCommand(args);
+    rl.close();
+    return;
+  }
+
+  await startInteractiveCli();
 };
 
 main();

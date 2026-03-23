@@ -1,11 +1,12 @@
-import { MODEL, OLLAMA_URL } from "../config.js";
+import { readAgentConfig } from "../config/agent-config.js";
 
 async function* _ollamaStreamGenerator(
   prompt: string,
   model: string,
+  ollamaUrl: string,
 ): AsyncGenerator<string> {
   try {
-    const response = await fetch(OLLAMA_URL, {
+    const response = await fetch(ollamaUrl, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
@@ -45,19 +46,23 @@ async function* _ollamaStreamGenerator(
 
 export async function callOllama(
   prompt: string,
-  model: string = MODEL,
+  model?: string,
   stream: boolean = false,
 ): Promise<string | AsyncGenerator<string>> {
+  const runtime = readAgentConfig();
+  const selectedModel = model || runtime.model;
+  const ollamaUrl = runtime.ollama_url;
+
   if (stream) {
-    return _ollamaStreamGenerator(prompt, model);
+    return _ollamaStreamGenerator(prompt, selectedModel, ollamaUrl);
   }
 
   try {
-    const response = await fetch(OLLAMA_URL, {
+    const response = await fetch(ollamaUrl, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        model,
+        model: selectedModel,
         prompt,
         stream: false,
         options: { temperature: 0 },

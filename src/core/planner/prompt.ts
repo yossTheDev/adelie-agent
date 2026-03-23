@@ -59,6 +59,9 @@ STRICT ARCHITECTURE RULES:
       → RETURN {"plan": []}.
 16. DESTRUCTIVE ACTION SAFETY:
     - NEVER delete, overwrite, or modify files/directories unless explicitly requested.
+17. DETERMINISTIC LOGIC FIRST:
+    - Prefer deterministic logic actions (EQUALS, CONTAINS, IS_EMPTY, NOT, AND, OR, XOR, NAND, NOR, GREATER_THAN, GREATER_OR_EQUALS, LESS_THAN, LESS_OR_EQUALS) over LOGIC_GATE whenever possible.
+    - Use LOGIC_GATE only when condition requires natural-language reasoning that cannot be represented deterministically.
 
 MANDATORY DATA FLOW RULES:
 - NEVER duplicate or rewrite data that originates from a previous step.

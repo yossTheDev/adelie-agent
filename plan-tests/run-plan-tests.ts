@@ -3,19 +3,15 @@ import path from "node:path";
 import { runPlan, resetExecutionContext } from "../src/core/executor/executor.js";
 
 type PlanFile = {
+  name?: string;
   plan: Array<{ id: string; action: string; args?: Record<string, any> }>;
 };
 
-const FIXTURE_PATH = path.join(
-  process.cwd(),
-  "plan-tests",
-  "for-each-documents-plan.json",
-);
-
-const TEMP_ROOT = path.join(process.cwd(), ".tmp-plan-tests", "Documents");
+const FIXTURES_DIR = path.join(process.cwd(), "plan-tests", "fixtures");
+const TEMP_ROOT = path.join(process.cwd(), ".tmp-plan-tests");
 
 const remapPlanForSandbox = (input: PlanFile): PlanFile => {
-  const sourcePrefix = "C:\\Users\\yoann\\Documents";
+  const sourcePrefix = "__ROOT__";
   const mapValue = (value: any): any => {
     if (typeof value === "string") {
       return value.replaceAll(sourcePrefix, TEMP_ROOT.replaceAll("/", "\\"));
@@ -32,47 +28,89 @@ const remapPlanForSandbox = (input: PlanFile): PlanFile => {
   return { plan: mapValue(input.plan) };
 };
 
+const assertFixture = (fixturePath: string): { ok: boolean; reason: string } => {
+  const baseName = path.basename(fixturePath);
+  const docsDir = path.join(TEMP_ROOT, "docs");
+  const logicDir = path.join(TEMP_ROOT, "logic");
+  const stateDir = path.join(TEMP_ROOT, "state");
+
+  if (baseName.startsWith("01-")) {
+    const created = fs.existsSync(docsDir)
+      ? fs
+          .readdirSync(docsDir)
+          .filter((f) => f.endsWith(".txt"))
+          .sort((a, b) => a.localeCompare(b, undefined, { numeric: true }))
+      : [];
+    const ok =
+      created.length === 15 &&
+      created[0] === "text-1.txt" &&
+      created[14] === "text-15.txt" &&
+      fs.readFileSync(path.join(docsDir, "text-15.txt"), "utf-8") ===
+        "This is text file number 15.";
+    return { ok, reason: ok ? "created 15 files from FOR_EACH" : "FOR_EACH output mismatch" };
+  }
+
+  if (baseName.startsWith("02-")) {
+    const ifPass = path.join(logicDir, "if-pass.txt");
+    const ifFail = path.join(logicDir, "if-fail.txt");
+    const ok = fs.existsSync(ifPass) && !fs.existsSync(ifFail);
+    return { ok, reason: ok ? "IF gate chose then branch" : "IF deterministic gate failed" };
+  }
+
+  if (baseName.startsWith("03-")) {
+    const forbidden = path.join(logicDir, "while-created.txt");
+    const ok = !fs.existsSync(forbidden);
+    return { ok, reason: ok ? "WHILE false condition skipped body" : "WHILE executed unexpectedly" };
+  }
+
+  if (baseName.startsWith("04-")) {
+    const proof = path.join(stateDir, "ok.txt");
+    const ok = fs.existsSync(proof);
+    return { ok, reason: ok ? "state actions produced expected condition" : "state actions failed" };
+  }
+
+  return { ok: true, reason: "no explicit assertion" };
+};
+
 const main = async () => {
-  fs.rmSync(path.join(process.cwd(), ".tmp-plan-tests"), {
-    recursive: true,
-    force: true,
-  });
+  fs.rmSync(TEMP_ROOT, { recursive: true, force: true });
+  fs.mkdirSync(TEMP_ROOT, { recursive: true });
 
-  const raw = fs.readFileSync(FIXTURE_PATH, "utf-8");
-  const parsed = JSON.parse(raw) as PlanFile;
-  const sandboxed = remapPlanForSandbox(parsed);
+  const fixturePaths = fs
+    .readdirSync(FIXTURES_DIR)
+    .filter((f) => f.endsWith(".json"))
+    .sort()
+    .map((f) => path.join(FIXTURES_DIR, f));
 
-  const results = await runPlan(sandboxed.plan, false);
-  const created = fs.existsSync(TEMP_ROOT)
-    ? fs
-        .readdirSync(TEMP_ROOT)
-        .filter((f) => f.endsWith(".txt"))
-        .sort((a, b) => a.localeCompare(b, undefined, { numeric: true }))
-    : [];
+  const report: Array<Record<string, any>> = [];
+  let allOk = true;
 
-  const allOk =
-    results.every((r) => r.success) &&
-    created.length === 15 &&
-    created[0] === "text-1.txt" &&
-    created[14] === "text-15.txt" &&
-    fs.readFileSync(path.join(TEMP_ROOT, "text-15.txt"), "utf-8") ===
-      "This is text file number 15.";
+  for (const fixturePath of fixturePaths) {
+    const raw = fs.readFileSync(fixturePath, "utf-8");
+    const parsed = JSON.parse(raw) as PlanFile;
+    const sandboxed = remapPlanForSandbox(parsed);
 
-  console.log(
-    JSON.stringify(
-      {
-        ok: allOk,
-        steps: sandboxed.plan.length,
-        executed: results.length,
-        createdCount: created.length,
-        sample: created.slice(0, 3),
-      },
-      null,
-      2,
-    ),
-  );
+    const results = await runPlan(sandboxed.plan, false);
+    const actionOk = results.every((r) => r.success);
+    const assertion = assertFixture(fixturePath);
+    const ok = actionOk && assertion.ok;
+    allOk = allOk && ok;
 
-  resetExecutionContext();
+    report.push({
+      fixture: path.basename(fixturePath),
+      name: parsed.name || "",
+      ok,
+      executed: results.length,
+      steps: sandboxed.plan.length,
+      reason: assertion.reason,
+    });
+
+    resetExecutionContext();
+  }
+
+  console.log(JSON.stringify({ ok: allOk, total: report.length, report }, null, 2));
+
+  fs.rmSync(TEMP_ROOT, { recursive: true, force: true });
 
   if (!allOk) {
     process.exitCode = 1;

@@ -1,0 +1,61 @@
+{
+  "name": "STATE_SET STATE_APPEND STATE_GET STATE_CLEAR",
+  "plan": [
+    {
+      "id": "s1",
+      "action": "STATE_SET",
+      "args": {
+        "key": "buffer",
+        "content": "hello"
+      }
+    },
+    {
+      "id": "s2",
+      "action": "STATE_APPEND",
+      "args": {
+        "key": "buffer",
+        "content": "world"
+      }
+    },
+    {
+      "id": "s3",
+      "action": "STATE_GET",
+      "args": {
+        "key": "buffer"
+      }
+    },
+    {
+      "id": "s4",
+      "action": "CONTAINS",
+      "args": {
+        "data": "$$s3",
+        "value": "world"
+      }
+    },
+    {
+      "id": "s5",
+      "action": "IF",
+      "args": {
+        "condition": "$$s4",
+        "then": [
+          {
+            "id": "write_proof",
+            "action": "CREATE_FILE",
+            "args": {
+              "path": "__ROOT__\\state\\ok.txt",
+              "content": "state works"
+            }
+          }
+        ],
+        "else": []
+      }
+    },
+    {
+      "id": "s6",
+      "action": "STATE_CLEAR",
+      "args": {
+        "key": "buffer"
+      }
+    }
+  ]
+}

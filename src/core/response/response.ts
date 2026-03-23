@@ -1,5 +1,5 @@
 import { ACTION_ARGS } from "../actions/actions.js";
-import { MODEL } from "../config.js";
+import { readAgentConfig } from "../config/agent-config.js";
 import { getSystemContextAsRules } from "../context/get-system-context.js";
 import { callOllama } from "../llm/llm.js";
 import type { ExecutionSummary } from "./types.js";
@@ -95,7 +95,8 @@ export async function* generateResponse(
     console.log(prompt);
   }
 
-  const stream = await callOllama(prompt, MODEL, true);
+  const config = readAgentConfig();
+  const stream = await callOllama(prompt, config.model, true);
 
   for await (const chunk of stream as AsyncGenerator<string>) {
     yield chunk;

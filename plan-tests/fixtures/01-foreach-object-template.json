@@ -1,0 +1,27 @@
+{
+  "name": "FOR_EACH object template placeholders",
+  "plan": [
+    {
+      "id": "mk1",
+      "action": "MAKE_DIRECTORY",
+      "args": {
+        "path": "__ROOT__\\docs"
+      }
+    },
+    {
+      "id": "loop1",
+      "action": "FOR_EACH",
+      "args": {
+        "items": "1,2,3,4,5,6,7,8,9,10,11,12,13,14,15",
+        "template": {
+          "id": "create_$$item",
+          "action": "CREATE_FILE",
+          "args": {
+            "path": "__ROOT__\\docs\\text-$$item.txt",
+            "content": "This is text file number $$item."
+          }
+        }
+      }
+    }
+  ]
+}

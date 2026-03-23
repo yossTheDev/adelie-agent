@@ -137,5 +137,11 @@ KEY RULES:
 - WHILE allows repeated execution while a condition is TRUE; beware infinite loops
 - LOGIC_GATE triggers execution of the immediately next step based on TRUE/FALSE
 - Combine with STATE_APPEND and STATE_GET to accumulate results across loops or conditionals
+
+DETERMINISTIC LOGIC GATES (preferred in conditions):
+- Use EQUALS / CONTAINS / IS_EMPTY / COUNT for deterministic checks
+- Use NOT(value), AND(a,b), OR(a,b), XOR(a,b), NAND(a,b), NOR(a,b) in IF/WHILE conditions
+- Use numeric comparisons: GREATER_THAN(a,b), GREATER_OR_EQUALS(a,b), LESS_THAN(a,b), LESS_OR_EQUALS(a,b)
+- Prefer deterministic gates over LOGIC_GATE unless natural-language reasoning is strictly required
 `;
 };

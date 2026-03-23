@@ -1,4 +1,5 @@
 import { ACTIONS } from "../actions/actions.js";
+import { readAgentConfig } from "../config/agent-config.js";
 
 interface Intent {
   id: string;
@@ -61,6 +62,20 @@ const normalizeTemplate = (templateInput: any): Intent[] => {
   return [];
 };
 
+const parseLogicExpression = (
+  input: string,
+): { gate: string; values: string[] } | null => {
+  const trimmed = input.trim();
+  const match = /^([A-Za-z_]+)\((.*)\)$/.exec(trimmed);
+  if (!match) return null;
+  const gate = match[1].toUpperCase();
+  const values = match[2]
+    .split(",")
+    .map((v) => v.trim())
+    .filter(Boolean);
+  return { gate, values };
+};
+
 const resolveConditionValue = async (
   conditionInput: any,
   localScope: Record<string, any>,
@@ -105,6 +120,30 @@ const resolveConditionValue = async (
 
   if (typeof conditionInput === "string" && conditionInput.startsWith("$$")) {
     return toBoolean(resolveArguments(conditionInput, localScope));
+  }
+
+  if (typeof conditionInput === "string") {
+    const parsed = parseLogicExpression(conditionInput);
+    if (parsed && parsed.gate in ACTIONS) {
+      const resolvedValues = parsed.values.map((value) =>
+        resolveArguments(value, localScope),
+      );
+
+      if (resolvedValues.length >= 2) {
+        const [ok, result] = await ACTIONS[parsed.gate]({
+          a: resolvedValues[0],
+          b: resolvedValues[1],
+        });
+        return ok ? toBoolean(result) : false;
+      }
+
+      if (resolvedValues.length === 1) {
+        const [ok, result] = await ACTIONS[parsed.gate]({
+          value: resolvedValues[0],
+        });
+        return ok ? toBoolean(result) : false;
+      }
+    }
   }
 
   return toBoolean(resolveArguments(conditionInput, localScope));
@@ -269,6 +308,8 @@ export const executeAction = async (
   }
 
   if (action === "WHILE") {
+    const config = readAgentConfig();
+    const maxIterations = Math.max(1, Number(config.max_loop_iterations || 1000));
     const conditionInput = resolvedArgs.condition;
     const body: Intent[] = resolvedArgs.body || [];
     let loopCounter = 0;
@@ -298,7 +339,7 @@ export const executeAction = async (
         }
       }
       loopCounter++;
-      if (loopCounter > 1000) break;
+      if (loopCounter > maxIterations) break;
     }
     executionContext[intent.id] = true;
     return {

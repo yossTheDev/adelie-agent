@@ -1,0 +1,46 @@
+{
+  "name": "IF with deterministic gate action",
+  "plan": [
+    {
+      "id": "cmp1",
+      "action": "GREATER_THAN",
+      "args": {
+        "a": 10,
+        "b": 5
+      }
+    },
+    {
+      "id": "if1",
+      "action": "IF",
+      "args": {
+        "condition": {
+          "action": "AND",
+          "args": {
+            "a": "$$cmp1",
+            "b": "TRUE"
+          }
+        },
+        "then": [
+          {
+            "id": "ok_file",
+            "action": "CREATE_FILE",
+            "args": {
+              "path": "__ROOT__\\logic\\if-pass.txt",
+              "content": "IF branch executed"
+            }
+          }
+        ],
+        "else": [
+          {
+            "id": "ko_file",
+            "action": "CREATE_FILE",
+            "args": {
+              "path": "__ROOT__\\logic\\if-fail.txt",
+              "content": "ELSE branch executed"
+            }
+          }
+        ]
+      }
+    }
+  ]
+}

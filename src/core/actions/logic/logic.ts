@@ -246,6 +246,34 @@ export const lessOrEquals = (args: { a: any; b: any }): ActionResult => {
 };
 
 /**
+ * ADD
+ */
+export const add = (args: { a: any; b: any }): ActionResult => {
+  try {
+    const a = toNumber(args.a);
+    const b = toNumber(args.b);
+    if (a === null || b === null) return [false, "ADD requires numbers"];
+    return [true, String(a + b)];
+  } catch (e) {
+    return [false, `ADD Error: ${String(e)}`];
+  }
+};
+
+/**
+ * SUBTRACT
+ */
+export const subtract = (args: { a: any; b: any }): ActionResult => {
+  try {
+    const a = toNumber(args.a);
+    const b = toNumber(args.b);
+    if (a === null || b === null) return [false, "SUBTRACT requires numbers"];
+    return [true, String(a - b)];
+  } catch (e) {
+    return [false, `SUBTRACT Error: ${String(e)}`];
+  }
+};
+
+/**
  * FOR_EACH (structural)
  */
 export const forEach = (args: {
@@ -332,6 +360,8 @@ export const ACTIONS: Record<
   GREATER_OR_EQUALS: (args) => greaterOrEquals(args),
   LESS_THAN: (args) => lessThan(args),
   LESS_OR_EQUALS: (args) => lessOrEquals(args),
+  ADD: (args) => add(args),
+  SUBTRACT: (args) => subtract(args),
 
   FOR_EACH: (args) => forEach(args),
   IF: (args) => ifAction(args),
@@ -354,6 +384,8 @@ export const ACTION_ARGS: Record<string, string[]> = {
   GREATER_OR_EQUALS: ["a", "b"],
   LESS_THAN: ["a", "b"],
   LESS_OR_EQUALS: ["a", "b"],
+  ADD: ["a", "b"],
+  SUBTRACT: ["a", "b"],
 
   FOR_EACH: ["items", "template"],
   IF: ["condition", "then", "else"],
@@ -383,6 +415,8 @@ export const ACTION_DESCRIPTIONS: Record<string, string> = {
   GREATER_OR_EQUALS: "Returns TRUE when numeric 'a' >= numeric 'b'.",
   LESS_THAN: "Returns TRUE when numeric 'a' < numeric 'b'.",
   LESS_OR_EQUALS: "Returns TRUE when numeric 'a' <= numeric 'b'.",
+  ADD: "Returns numeric sum as string: a + b.",
+  SUBTRACT: "Returns numeric subtraction as string: a - b.",
 
   FOR_EACH:
     "Iterates over a list and executes a template per item. Use $$item inside template.",
