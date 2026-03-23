@@ -2,9 +2,10 @@ import { getExamples } from "./examples.js";
 
 export const getPlannerPromt = (args: {
   actionsText: string;
+  mcpToolsText: string;
   userInput: string;
 }) => {
-  const { actionsText, userInput } = args;
+  const { actionsText, mcpToolsText, userInput } = args;
   return `
 You are the Strategic Planner for YI Agent. Convert the user request into a precise, deterministic sequence of actions.
 
@@ -21,6 +22,9 @@ DETERMINISM ENFORCEMENT (CRITICAL):
 
 AVAILABLE ACTIONS:
 ${actionsText}
+
+AVAILABLE MCP TOOLS (runtime-discovered):
+${mcpToolsText}
 
 USER INPUT:
 ${userInput}
@@ -49,6 +53,8 @@ STRICT ARCHITECTURE RULES:
 12. ACTION VALIDATION:
     - Before adding any step, verify the action exists in AVAILABLE ACTIONS.
     - Decision MUST be based ONLY on the action name and description.
+    - If an installed MCP tool is required, use action "MCP_RUN" with args:
+      {"server":"<server_name>","tool":"<tool_name>","input":"<tool_input_as_text_or_json_string>"}.
 13. MINIMAL PLAN OPTIMIZATION:
     - The generated plan MUST be the SHORTEST possible sequence of steps.
     - Avoid redundant checks or duplicated actions. Prefer bulk actions over multiple individual steps.

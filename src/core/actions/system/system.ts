@@ -4,6 +4,7 @@ import type { ActionResult } from "../../../types/action-result.js";
 import fs from "node:fs";
 import { execSync } from "child_process";
 import { getSystemContext } from "../../context/get-system-context.js";
+import { listMcpServers } from "../../config/mcp-config.js";
 
 export const systemTime = (): ActionResult => {
   try {
@@ -37,18 +38,48 @@ export const systemInfo = (): ActionResult => {
   }
 };
 
+export const mcpRun = (args: {
+  server: string;
+  tool: string;
+  input?: string;
+}): ActionResult => {
+  try {
+    const serverName = String(args.server || "").trim();
+    const toolName = String(args.tool || "").trim();
+    if (!serverName || !toolName) {
+      return [false, "MCP_RUN requires 'server' and 'tool'"];
+    }
+
+    const server = listMcpServers().find((s) => s.name === serverName);
+    if (!server) return [false, `MCP server '${serverName}' not found`];
+
+    if (server.tools.length > 0 && !server.tools.includes(toolName)) {
+      return [false, `Tool '${toolName}' not registered for MCP server '${serverName}'`];
+    }
+
+    const input = args.input ? String(args.input) : "";
+    const cmd = `"${server.command}" ${server.args.join(" ")} ${toolName}${input ? ` "${input.replace(/"/g, '\\"')}"` : ""}`.trim();
+    const output = execSync(cmd, { encoding: "utf-8" });
+    return [true, output.trim()];
+  } catch (e) {
+    return [false, `MCP_RUN Error: ${String(e)}`];
+  }
+};
+
 export const ACTIONS: Record<
   string,
   (args: any) => ActionResult | Promise<ActionResult>
 > = {
   SYSTEM_TIME: () => systemTime(),
   SYSTEM_INFO: () => systemInfo(),
+  MCP_RUN: (args) => mcpRun(args),
   RUN_SCRIPT: (args) => runScript(args.path || "", args.args || []),
 };
 
 export const ACTION_ARGS: Record<string, string[]> = {
   SYSTEM_TIME: [],
   SYSTEM_INFO: [],
+  MCP_RUN: ["server", "tool", "input"],
   RUN_SCRIPT: ["path", "args"],
 };
 
@@ -56,6 +87,8 @@ export const ACTION_DESCRIPTIONS: Record<string, string> = {
   SYSTEM_TIME: "Returns the current system date and time in ISO format.",
   SYSTEM_INFO:
     "Returns structured system information (user, OS, folders, network, env).",
+  MCP_RUN:
+    "Runs a registered MCP server tool by server/tool name and optional input payload.",
   RUN_SCRIPT:
     "Executes a local script with optional arguments and returns its output.",
 };

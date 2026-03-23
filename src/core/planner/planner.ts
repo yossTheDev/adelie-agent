@@ -1,4 +1,5 @@
 import { ACTION_ARGS, ACTION_DESCRIPTIONS } from "../actions/actions.js";
+import { buildMcpPlannerToolsText } from "../config/mcp-config.js";
 import { callOllama } from "../llm/llm.js";
 import { getPlannerPromt } from "./prompt.js";
 
@@ -87,9 +88,10 @@ export async function generatePlan(
   });
 
   const actionsText = actionsInfo.join("\n");
+  const mcpToolsText = buildMcpPlannerToolsText();
 
   // --- PHASE 1: GENERATION PROMPT ---
-  const basePrompt = getPlannerPromt({ actionsText, userInput });
+  const basePrompt = getPlannerPromt({ actionsText, mcpToolsText, userInput });
 
   let currentPlanRaw = (await callOllama(
     basePrompt,

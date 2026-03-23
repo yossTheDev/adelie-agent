@@ -163,6 +163,9 @@ const handleMcpCommand = (args: string[]) => {
             `${s.command} ${s.args.join(" ")}`.trim(),
           )}`,
         );
+        if (s.tools.length > 0) {
+          console.log(`  ${chalk.gray(`tools: ${s.tools.join(", ")}`)}`);
+        }
       }
     }
     console.log(chalk.gray(`Path: ${getMcpConfigPath()}`));
@@ -170,14 +173,24 @@ const handleMcpCommand = (args: string[]) => {
   }
 
   if (subcommand === "install") {
-    const [name, command, ...commandArgs] = rest;
+    const [name, command, ...rawArgs] = rest;
     if (!name || !command) {
       console.log(
-        chalk.yellow("Usage: yi mcp install <name> <command> [args...]"),
+        chalk.yellow("Usage: yi mcp install <name> <command> [args...] [--tools=tool1,tool2]"),
       );
       return;
     }
-    const server = installMcpServer({ name, command, commandArgs });
+    const toolFlag = rawArgs.find((a) => a.startsWith("--tools="));
+    const commandArgs = rawArgs.filter((a) => !a.startsWith("--tools="));
+    const tools = toolFlag
+      ? toolFlag
+          .replace("--tools=", "")
+          .split(",")
+          .map((t) => t.trim())
+          .filter(Boolean)
+      : [];
+
+    const server = installMcpServer({ name, command, commandArgs, tools });
     console.log(chalk.green(`Installed MCP '${server.name}'.`));
     return;
   }

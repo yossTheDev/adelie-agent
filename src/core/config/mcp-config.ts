@@ -6,6 +6,7 @@ type McpServer = {
   name: string;
   command: string;
   args: string[];
+  tools: string[];
   installed_at: string;
 };
 
@@ -50,6 +51,7 @@ export const installMcpServer = (args: {
   name: string;
   command: string;
   commandArgs?: string[];
+  tools?: string[];
 }): McpServer => {
   const config = readMcpConfig();
   const withoutExisting = config.servers.filter((s) => s.name !== args.name);
@@ -57,11 +59,30 @@ export const installMcpServer = (args: {
     name: args.name,
     command: args.command,
     args: args.commandArgs || [],
+    tools: args.tools || [],
     installed_at: new Date().toISOString(),
   };
   const next: McpConfig = { servers: [...withoutExisting, server] };
   writeMcpConfig(next);
   return server;
+};
+
+export const buildMcpPlannerToolsText = (): string => {
+  const servers = listMcpServers();
+  if (servers.length === 0) return "No MCP servers installed.";
+
+  const lines: string[] = [];
+  for (const server of servers) {
+    if (!server.tools || server.tools.length === 0) {
+      lines.push(`- ${server.name}: no declared tools`);
+      continue;
+    }
+    for (const tool of server.tools) {
+      lines.push(`- ${server.name}.${tool}`);
+    }
+  }
+
+  return lines.join("\n");
 };
 
 export const removeMcpServer = (name: string): boolean => {
