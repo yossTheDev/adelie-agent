@@ -56,12 +56,16 @@ yarn tsx src/cli/index.ts config path
 
 ```bash
 yarn tsx src/cli/index.ts mcp install myserver my-command --tools=search,fetch
+yarn tsx src/cli/index.ts mcp install-preset github
+yarn tsx src/cli/index.ts mcp set-env github GITHUB_TOKEN <token>
+yarn tsx src/cli/index.ts mcp sync-tools github
 yarn tsx src/cli/index.ts mcp list
 yarn tsx src/cli/index.ts mcp remove myserver
 yarn tsx src/cli/index.ts mcp path
 ```
 
 Planner exposure of MCP tools is automatic from installed MCP registry entries.
+For live tool discovery from an MCP server, run `mcp sync-tools <server>`.
 
 ## Testing
 

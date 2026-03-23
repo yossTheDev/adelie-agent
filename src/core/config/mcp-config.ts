@@ -7,6 +7,8 @@ type McpServer = {
   command: string;
   args: string[];
   tools: string[];
+  env: Record<string, string>;
+  package?: string;
   installed_at: string;
 };
 
@@ -52,6 +54,8 @@ export const installMcpServer = (args: {
   command: string;
   commandArgs?: string[];
   tools?: string[];
+  env?: Record<string, string>;
+  packageName?: string;
 }): McpServer => {
   const config = readMcpConfig();
   const withoutExisting = config.servers.filter((s) => s.name !== args.name);
@@ -60,11 +64,37 @@ export const installMcpServer = (args: {
     command: args.command,
     args: args.commandArgs || [],
     tools: args.tools || [],
+    env: args.env || {},
+    package: args.packageName,
     installed_at: new Date().toISOString(),
   };
   const next: McpConfig = { servers: [...withoutExisting, server] };
   writeMcpConfig(next);
   return server;
+};
+
+export const updateMcpServerEnv = (
+  name: string,
+  envPatch: Record<string, string>,
+): McpServer | null => {
+  const config = readMcpConfig();
+  const target = config.servers.find((s) => s.name === name);
+  if (!target) return null;
+  target.env = { ...(target.env || {}), ...envPatch };
+  writeMcpConfig(config);
+  return target;
+};
+
+export const syncMcpServerTools = (
+  name: string,
+  tools: string[],
+): McpServer | null => {
+  const config = readMcpConfig();
+  const target = config.servers.find((s) => s.name === name);
+  if (!target) return null;
+  target.tools = tools;
+  writeMcpConfig(config);
+  return target;
 };
 
 export const buildMcpPlannerToolsText = (): string => {

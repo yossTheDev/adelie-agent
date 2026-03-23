@@ -5,6 +5,7 @@ import fs from "node:fs";
 import { execSync } from "child_process";
 import { getSystemContext } from "../../context/get-system-context.js";
 import { listMcpServers } from "../../config/mcp-config.js";
+import { callMcpTool } from "../../mcp/mcp-runtime.js";
 
 export const systemTime = (): ActionResult => {
   try {
@@ -38,11 +39,11 @@ export const systemInfo = (): ActionResult => {
   }
 };
 
-export const mcpRun = (args: {
+export const mcpRun = async (args: {
   server: string;
   tool: string;
   input?: string;
-}): ActionResult => {
+}): Promise<ActionResult> => {
   try {
     const serverName = String(args.server || "").trim();
     const toolName = String(args.tool || "").trim();
@@ -57,10 +58,12 @@ export const mcpRun = (args: {
       return [false, `Tool '${toolName}' not registered for MCP server '${serverName}'`];
     }
 
-    const input = args.input ? String(args.input) : "";
-    const cmd = `"${server.command}" ${server.args.join(" ")} ${toolName}${input ? ` "${input.replace(/"/g, '\\"')}"` : ""}`.trim();
-    const output = execSync(cmd, { encoding: "utf-8" });
-    return [true, output.trim()];
+    const response = await callMcpTool({
+      server: serverName,
+      tool: toolName,
+      input: args.input,
+    });
+    return [true, JSON.stringify(response)];
   } catch (e) {
     return [false, `MCP_RUN Error: ${String(e)}`];
   }

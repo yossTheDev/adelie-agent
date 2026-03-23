@@ -20,7 +20,10 @@ import {
   installMcpServer,
   listMcpServers,
   removeMcpServer,
+  syncMcpServerTools,
+  updateMcpServerEnv,
 } from "../core/config/mcp-config.js";
+import { listMcpTools } from "../core/mcp/mcp-runtime.js";
 
 const rl = readline.createInterface({
   input: process.stdin,
@@ -148,7 +151,7 @@ const handleConfigCommand = (args: string[]) => {
   console.log(chalk.yellow("Unknown config command."));
 };
 
-const handleMcpCommand = (args: string[]) => {
+const handleMcpCommand = async (args: string[]) => {
   const [subcommand, ...rest] = args;
 
   if (!subcommand || subcommand === "list") {
@@ -192,6 +195,101 @@ const handleMcpCommand = (args: string[]) => {
 
     const server = installMcpServer({ name, command, commandArgs, tools });
     console.log(chalk.green(`Installed MCP '${server.name}'.`));
+    return;
+  }
+
+  if (subcommand === "install-preset") {
+    const [preset] = rest;
+    if (!preset) {
+      console.log(
+        chalk.yellow("Usage: yi mcp install-preset <github|notion>"),
+      );
+      return;
+    }
+
+    if (preset === "github") {
+      const server = installMcpServer({
+        name: "github",
+        command: "npx",
+        commandArgs: ["-y", "@modelcontextprotocol/server-github"],
+        tools: [],
+        env: {
+          GITHUB_TOKEN: "",
+        },
+        packageName: "@modelcontextprotocol/server-github",
+      });
+      console.log(
+        chalk.green(
+          `Installed preset '${preset}'. Configure token with: yi mcp set-env github GITHUB_TOKEN <token>`,
+        ),
+      );
+      console.log(chalk.gray(`Server: ${server.name}`));
+      return;
+    }
+
+    if (preset === "notion") {
+      const server = installMcpServer({
+        name: "notion",
+        command: "npx",
+        commandArgs: ["-y", "@modelcontextprotocol/server-notion"],
+        tools: [],
+        env: {
+          NOTION_API_KEY: "",
+        },
+        packageName: "@modelcontextprotocol/server-notion",
+      });
+      console.log(
+        chalk.green(
+          `Installed preset '${preset}'. Configure key with: yi mcp set-env notion NOTION_API_KEY <key>`,
+        ),
+      );
+      console.log(chalk.gray(`Server: ${server.name}`));
+      return;
+    }
+
+    console.log(chalk.yellow("Unknown preset. Use github or notion."));
+    return;
+  }
+
+  if (subcommand === "set-env") {
+    const [name, envKey, ...envValueParts] = rest;
+    const envValue = envValueParts.join(" ");
+    if (!name || !envKey || !envValue) {
+      console.log(
+        chalk.yellow("Usage: yi mcp set-env <server> <ENV_KEY> <value>"),
+      );
+      return;
+    }
+    const updated = updateMcpServerEnv(name, { [envKey]: envValue });
+    if (!updated) {
+      console.log(chalk.yellow(`MCP '${name}' was not found.`));
+      return;
+    }
+    console.log(chalk.green(`Updated env '${envKey}' for MCP '${name}'.`));
+    return;
+  }
+
+  if (subcommand === "sync-tools") {
+    const [name] = rest;
+    if (!name) {
+      console.log(chalk.yellow("Usage: yi mcp sync-tools <server>"));
+      return;
+    }
+    try {
+      const tools = await listMcpTools(name);
+      const updated = syncMcpServerTools(name, tools);
+      if (!updated) {
+        console.log(chalk.yellow(`MCP '${name}' was not found.`));
+        return;
+      }
+      console.log(
+        chalk.green(
+          `Synced ${tools.length} tools for '${name}': ${tools.join(", ") || "(none)"}`,
+        ),
+      );
+    } catch (error) {
+      console.log(chalk.red(`Failed to sync MCP tools: ${String(error)}`));
+    }
     return;
   }
 
@@ -318,7 +416,7 @@ const main = async () => {
   }
 
   if (command === "mcp") {
-    handleMcpCommand(args);
+    await handleMcpCommand(args);
     rl.close();
     return;
   }
