@@ -49,10 +49,13 @@ const sanitizePlan = (raw: unknown): PlanAction[] => {
   for (const step of raw) {
     if (!step || typeof step !== "object") continue;
     const rawId = String((step as any).id || "").trim();
-    const action = String((step as any).action || "").trim().toUpperCase();
-    const args = (step as any).args && typeof (step as any).args === "object"
-      ? ({ ...(step as any).args } as Record<string, any>)
-      : {};
+    const action = String((step as any).action || "")
+      .trim()
+      .toUpperCase();
+    const args =
+      (step as any).args && typeof (step as any).args === "object"
+        ? ({ ...(step as any).args } as Record<string, any>)
+        : {};
 
     if (!rawId || !action) continue;
     if (!allowedActions.has(action)) continue;

@@ -47,7 +47,7 @@ User: execute actions for each file in ./data
 User: create numbered files using FOR_EACH with a single template object
 {
   "plan": [
-    {"id": "mk1", "action": "MAKE_DIRECTORY", "args": {"path": "C:\\Users\\yoann\\Documents"}},
+    {"id": "mk1", "action": "MAKE_DIRECTORY", "args": {"path": "C:\\\\Users\\\\yoann\\\\Documents"}},
     {
       "id": "loop1",
       "action": "FOR_EACH",
@@ -57,7 +57,7 @@ User: create numbered files using FOR_EACH with a single template object
           "id": "create_$$item",
           "action": "CREATE_FILE",
           "args": {
-            "path": "C:\\Users\\yoann\\Documents\\text-$$item.txt",
+            "path": "C:\\\\Users\\\\yoann\\\\Documents\\\\text-$$item.txt",
             "content": "This is text file number $$item."
           }
         }
@@ -70,11 +70,19 @@ User: conditional execution - only summarize if buffer is not empty
 {
   "plan": [
     {"id": "g1", "action": "STATE_GET", "args": {"key": "data_buffer"}},
+    {"id": "empty1", "action": "IS_EMPTY", "args": {"data": "$$g1"}},
+    {"id": "not1", "action": "NOT", "args": {"value": "$$empty1"}},
     {
       "id": "if1",
       "action": "IF",
       "args": {
-        "condition": "NOT EMPTY",
+        "condition": {
+          "action": "AND",
+          "args": {
+            "a": "$$not1",
+            "b": "TRUE"
+          }
+        },
         "then": [
           {"id": "t1", "action": "AI_TRANSFORM", "args": {"task": "Summarize the collected content", "content": "$$g1"}}
         ],
@@ -86,62 +94,75 @@ User: conditional execution - only summarize if buffer is not empty
   ]
 }
 
-User: repeat reading and appending until all files in ./pending are processed
+User: conditional execution with numeric comparison
+{
+  "plan": [
+    {"id": "cnt1", "action": "COUNT", "args": {"items": "a,b,c,d"}},
+    {"id": "cmp1", "action": "GREATER_THAN", "args": {"a": "$$cnt1", "b": 2}},
+    {
+      "id": "if1",
+      "action": "IF",
+      "args": {
+        "condition": {
+          "action": "AND",
+          "args": {
+            "a": "$$cmp1",
+            "b": "TRUE"
+          }
+        },
+        "then": [
+          {"id": "ok1", "action": "AI_TRANSFORM", "args": {"task": "Return 'More than 2 items'", "content": ""}}
+        ],
+        "else": [
+          {"id": "ko1", "action": "AI_TRANSFORM", "args": {"task": "Return '2 or fewer items'", "content": ""}}
+        ]
+      }
+    }
+  ]
+}
+
+User: repeat while there are files pending (deterministic condition)
 {
   "plan": [
     {"id": "f1", "action": "LIST_FILES", "args": {"path": "./pending"}},
+    {"id": "cnt1", "action": "COUNT", "args": {"items": "$$f1"}},
     {
       "id": "while1",
       "action": "WHILE",
       "args": {
-        "condition": "Items remaining in $$f1",
+        "condition": {
+          "action": "GREATER_THAN",
+          "args": {
+            "a": "$$cnt1",
+            "b": 0
+          }
+        },
         "body": [
-          {"id": "next1", "action": "FOR_EACH", "args": {
-            "items": "$$f1",
-            "template": [
-              {"id": "r1", "action": "READ_FILE", "args": {"path": "$$item"}},
-              {"id": "s1", "action": "STATE_APPEND", "args": {"key": "pending_buffer", "content": "$$r1"}}
-            ]
-          }}
+          {
+            "id": "loop1",
+            "action": "FOR_EACH",
+            "args": {
+              "items": "$$f1",
+              "template": [
+                {"id": "r1", "action": "READ_FILE", "args": {"path": "$$item"}},
+                {"id": "s1", "action": "STATE_APPEND", "args": {"key": "pending_buffer", "content": "$$r1"}}
+              ]
+            }
+          }
         ]
       }
     }
   ]
 }
-
-User: check if a folder is empty and create files if true
-{
-  "plan": [
-    {"id": "c1", "action": "CHECK_EXISTS", "args": {"path": "C:\\Users\\Documents"}},
-    {"id": "g1", "action": "LOGIC_GATE", "args": {"condition": "Folder is empty", "data": "$$c1"}},
-    {
-      "id": "f1",
-      "action": "FOR_EACH",
-      "args": {
-        "items": ["File1.txt","File2.txt","File3.txt","File4.txt","File5.txt","File6.txt","File7.txt","File8.txt","File9.txt","File10.txt"],
-        "template": [
-          {"id": "create_$$item","action": "CREATE_FILE","args": {"path": "C:\\Users\\Documents\\$$item","content": ""}}
-        ]
-      }
-    }
-  ]
-}
-
 
 KEY RULES:
-- Use COUNT to get number of items
-- Use IS_EMPTY to detect empty lists or results
-- Use CONTAINS to check if a value exists in a list
-- FOR_EACH executes a template per item in a list; $$item refers to the current element
-- IF allows conditional execution based on boolean results or logical conditions
-- WHILE allows repeated execution while a condition is TRUE; beware infinite loops
-- LOGIC_GATE triggers execution of the immediately next step based on TRUE/FALSE
-- Combine with STATE_APPEND and STATE_GET to accumulate results across loops or conditionals
-
-DETERMINISTIC LOGIC GATES (preferred in conditions):
-- Use EQUALS / CONTAINS / IS_EMPTY / COUNT for deterministic checks
-- Use NOT(value), AND(a,b), OR(a,b), XOR(a,b), NAND(a,b), NOR(a,b) in IF/WHILE conditions
-- Use numeric comparisons: GREATER_THAN(a,b), GREATER_OR_EQUALS(a,b), LESS_THAN(a,b), LESS_OR_EQUALS(a,b)
-- Prefer deterministic gates over LOGIC_GATE unless natural-language reasoning is strictly required
+- Always use deterministic logic gates inside IF/WHILE condition
+- condition must be an object: { action, args }
+- Prefer IS_EMPTY, COUNT, CONTAINS, EQUALS for base checks
+- Compose logic using NOT, AND, OR, XOR, NAND, NOR
+- Numeric comparisons: GREATER_THAN, LESS_THAN, etc.
+- FOR_EACH uses $$item for current element
+- Use STATE_APPEND / STATE_GET to accumulate data
+- Avoid free-text conditions like "Items remaining..." → always use explicit actions
 `;
 };

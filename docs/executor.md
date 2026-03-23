@@ -32,4 +32,3 @@ Conditions can evaluate:
 
 - Deterministic actions (`AND`, `OR`, `NOT`, comparisons, etc.)
 - Expression strings like `AND(TRUE,FALSE)` or `LESS_THAN(1,2)`
-- Fallback to `LOGIC_GATE` only when explicitly needed.
