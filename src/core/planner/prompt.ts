@@ -27,7 +27,7 @@ ${userInput}
 
 STRICT ARCHITECTURE RULES:
 1. FORMAT: Return ONLY a valid JSON object: {"plan": [{"id": "unique_id", "action": "NAME", "args": {...}}]}.
-2. DATA PIPING: To use the output of a previous step, use the exact syntax "$$step_id" as the argument value.
+2. DATA PIPING: To use previous outputs, use "$$step_id" as full argument values. Inside FOR_EACH templates, "$$item", "$$index", and "$$loopCounter" may also appear inside strings (e.g., "text-$$item.txt").
 3. UNIQUE IDs: Every step MUST have a short, unique "id" (e.g., "s1", "read1", "trans1").
 4. FILES VS DIRECTORIES: Pay strict attention to whether the user asks for files or folders. Use regex patterns in FILTER_FILES (e.g., "\\\\.txt$" for text files, "\\\\..+$" for any file) to ensure you only target the requested type and avoid directories.
 5. BULK ACTIONS VS ITERATION:
@@ -66,8 +66,8 @@ MANDATORY DATA FLOW RULES:
 - Hardcoded values are FORBIDDEN if they can be derived from previous steps.
 
 DATA PIPING CONSTRAINTS:
-- "$$step_id" must be used as a FULL value, not inside strings.
-- Do NOT concatenate strings with $$ (e.g., "C:/$$step1" is INVALID).
+- Use "$$step_id" as a full value for normal cross-step piping.
+- Inside FOR_EACH templates, embedding loop placeholders inside strings is valid (e.g., "C:/tmp/text-$$item.txt").
 
 DEPENDENCY ENFORCEMENT:
 - Before generating the plan, identify dependencies between steps.
@@ -79,6 +79,6 @@ INVALID:
 VALID:
 {"dest": "$$dir1"}
 
-${getExamples}
+${getExamples()}
 `;
 };

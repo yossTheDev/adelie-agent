@@ -4,6 +4,12 @@ import fs from "node:fs";
 import path from "node:path";
 import type { ActionResult } from "../../../types/action-result.js";
 
+const normalizePath = (input: string): string =>
+  path.normalize(String(input || "").trim().replace(/^"+|"+$/g, ""));
+
+const fileHash = (filePath: string): string =>
+  fs.readFileSync(filePath).toString("base64");
+
 export const listFiles = (dirPath: string = "."): ActionResult => {
   try {
     if (!fs.existsSync(dirPath)) return [false, JSON.stringify([])];
@@ -66,18 +72,29 @@ export const createFile = (
   content: string = "",
 ): ActionResult => {
   try {
-    const dir = path.dirname(filePath);
+    const normalizedFile = normalizePath(filePath);
+    const dir = path.dirname(normalizedFile);
     if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
 
-    if (fs.existsSync(filePath)) {
+    if (fs.existsSync(normalizedFile)) {
       return [
         false,
-        `Error: File already exists at ${filePath}. Use UPDATE_FILE to change it.`,
+        `Error: File already exists at ${normalizedFile}. Use UPDATE_FILE to change it.`,
       ];
     }
 
-    fs.writeFileSync(filePath, content, "utf-8");
-    return [true, `New file created: ${filePath}`];
+    fs.writeFileSync(normalizedFile, content, "utf-8");
+
+    if (!fs.existsSync(normalizedFile)) {
+      return [false, `CREATE_FILE verification failed: ${normalizedFile} was not created`];
+    }
+
+    const written = fs.readFileSync(normalizedFile, "utf-8");
+    if (written !== content) {
+      return [false, `CREATE_FILE verification failed: content mismatch at ${normalizedFile}`];
+    }
+
+    return [true, `New file created: ${normalizedFile}`];
   } catch (e) {
     return [false, String(e)];
   }
@@ -85,14 +102,19 @@ export const createFile = (
 
 export const updateFile = (filePath: string, content: string): ActionResult => {
   try {
-    if (!fs.existsSync(filePath)) {
+    const normalizedFile = normalizePath(filePath);
+    if (!fs.existsSync(normalizedFile)) {
       return [
         false,
-        `Error: File ${filePath} does not exist. Use CREATE_FILE first.`,
+        `Error: File ${normalizedFile} does not exist. Use CREATE_FILE first.`,
       ];
     }
-    fs.writeFileSync(filePath, content, "utf-8");
-    return [true, `File updated: ${filePath}`];
+    fs.writeFileSync(normalizedFile, content, "utf-8");
+    const written = fs.readFileSync(normalizedFile, "utf-8");
+    if (written !== content) {
+      return [false, `UPDATE_FILE verification failed: content mismatch at ${normalizedFile}`];
+    }
+    return [true, `File updated: ${normalizedFile}`];
   } catch (e) {
     return [false, String(e)];
   }
@@ -100,8 +122,12 @@ export const updateFile = (filePath: string, content: string): ActionResult => {
 
 export const makeDirectory = (dirPath: string): ActionResult => {
   try {
-    fs.mkdirSync(dirPath, { recursive: true });
-    return [true, `Directory created or already exists at ${dirPath}`];
+    const normalizedDir = normalizePath(dirPath);
+    fs.mkdirSync(normalizedDir, { recursive: true });
+    if (!fs.existsSync(normalizedDir) || !fs.statSync(normalizedDir).isDirectory()) {
+      return [false, `MAKE_DIRECTORY verification failed: ${normalizedDir} is not a directory`];
+    }
+    return [true, `Directory created or already exists at ${normalizedDir}`];
   } catch (e) {
     return [false, String(e)];
   }
@@ -109,10 +135,14 @@ export const makeDirectory = (dirPath: string): ActionResult => {
 
 export const deleteFile = (dirPath: string): ActionResult => {
   try {
-    if (!fs.existsSync(dirPath))
+    const normalized = normalizePath(dirPath);
+    if (!fs.existsSync(normalized))
       return [false, "File or directory does not exist"];
-    fs.rmSync(dirPath, { recursive: true, force: true });
-    return [true, `Deleted: ${dirPath}`];
+    fs.rmSync(normalized, { recursive: true, force: true });
+    if (fs.existsSync(normalized)) {
+      return [false, `DELETE_FILE verification failed: ${normalized} still exists`];
+    }
+    return [true, `Deleted: ${normalized}`];
   } catch (e) {
     return [false, String(e)];
   }
@@ -120,8 +150,8 @@ export const deleteFile = (dirPath: string): ActionResult => {
 
 export const copyFile = (src: string, dest: string): ActionResult => {
   try {
-    const srcPath = path.normalize(src.trim().replace(/"/g, ""));
-    let destPath = path.normalize(dest.trim().replace(/"/g, ""));
+    const srcPath = normalizePath(src);
+    const destPath = normalizePath(dest);
 
     if (!fs.existsSync(srcPath))
       return [false, `Source file does not exist: ${src}`];
@@ -137,6 +167,12 @@ export const copyFile = (src: string, dest: string): ActionResult => {
       : path.join(destFolder, path.basename(srcPath));
 
     fs.copyFileSync(srcPath, finalDest);
+    if (!fs.existsSync(finalDest)) {
+      return [false, `COPY_FILE verification failed: destination missing ${finalDest}`];
+    }
+    if (fileHash(srcPath) !== fileHash(finalDest)) {
+      return [false, `COPY_FILE verification failed: destination content mismatch at ${finalDest}`];
+    }
     return [true, `Copied ${src} to ${finalDest}`];
   } catch (e) {
     return [false, String(e)];
@@ -145,11 +181,30 @@ export const copyFile = (src: string, dest: string): ActionResult => {
 
 export const moveFile = (src: string, dest: string): ActionResult => {
   try {
-    if (!fs.existsSync(src))
+    const srcPath = normalizePath(src);
+    const destPathRaw = normalizePath(dest);
+    if (!fs.existsSync(srcPath))
       return [false, `Source file does not exist: ${src}`];
 
-    fs.renameSync(src, dest);
-    return [true, `Moved ${src} to ${dest}`];
+    const sourceHash = fileHash(srcPath);
+    const isDestFile = !!path.extname(destPathRaw);
+    const destFolder = isDestFile ? path.dirname(destPathRaw) : destPathRaw;
+    if (!fs.existsSync(destFolder)) fs.mkdirSync(destFolder, { recursive: true });
+    const finalDest = isDestFile
+      ? destPathRaw
+      : path.join(destFolder, path.basename(srcPath));
+
+    fs.renameSync(srcPath, finalDest);
+    if (fs.existsSync(srcPath)) {
+      return [false, `MOVE_FILE verification failed: source still exists ${srcPath}`];
+    }
+    if (!fs.existsSync(finalDest)) {
+      return [false, `MOVE_FILE verification failed: destination missing ${finalDest}`];
+    }
+    if (fileHash(finalDest) !== sourceHash) {
+      return [false, `MOVE_FILE verification failed: destination content mismatch at ${finalDest}`];
+    }
+    return [true, `Moved ${srcPath} to ${finalDest}`];
   } catch (e) {
     return [false, String(e)];
   }
@@ -157,9 +212,13 @@ export const moveFile = (src: string, dest: string): ActionResult => {
 
 export const deleteDirectory = (dirPath: string): ActionResult => {
   try {
-    if (!fs.existsSync(dirPath)) return [false, "Directory does not exist"];
-    fs.rmSync(dirPath, { recursive: true, force: true });
-    return [true, `Deleted directory: ${dirPath}`];
+    const normalizedDir = normalizePath(dirPath);
+    if (!fs.existsSync(normalizedDir)) return [false, "Directory does not exist"];
+    fs.rmSync(normalizedDir, { recursive: true, force: true });
+    if (fs.existsSync(normalizedDir)) {
+      return [false, `DELETE_DIRECTORY verification failed: ${normalizedDir} still exists`];
+    }
+    return [true, `Deleted directory: ${normalizedDir}`];
   } catch (e) {
     return [false, String(e)];
   }
@@ -170,9 +229,21 @@ export const renameFileOrDirectory = (
   dest: string,
 ): ActionResult => {
   try {
-    if (!fs.existsSync(src)) return [false, "Source does not exist"];
-    fs.renameSync(src, dest);
-    return [true, `Renamed ${src} to ${dest}`];
+    const srcPath = normalizePath(src);
+    const destPath = normalizePath(dest);
+    if (!fs.existsSync(srcPath)) return [false, "Source does not exist"];
+    const sourceHash = fs.statSync(srcPath).isFile() ? fileHash(srcPath) : "";
+    fs.renameSync(srcPath, destPath);
+    if (fs.existsSync(srcPath)) {
+      return [false, `RENAME verification failed: source still exists ${srcPath}`];
+    }
+    if (!fs.existsSync(destPath)) {
+      return [false, `RENAME verification failed: destination missing ${destPath}`];
+    }
+    if (sourceHash && fileHash(destPath) !== sourceHash) {
+      return [false, `RENAME verification failed: destination content mismatch at ${destPath}`];
+    }
+    return [true, `Renamed ${srcPath} to ${destPath}`];
   } catch (e) {
     return [false, String(e)];
   }
@@ -249,11 +320,20 @@ export const filterFiles = (
  */
 const parseFileList = (input: any): string[] => {
   if (Array.isArray(input)) return input;
-  if (typeof input === "string")
-    return input
+  if (typeof input === "string") {
+    const trimmed = input.trim();
+    if (!trimmed) return [];
+    try {
+      const parsed = JSON.parse(trimmed);
+      if (Array.isArray(parsed)) return parsed.map((entry) => String(entry));
+    } catch {
+      // fallback to csv
+    }
+    return trimmed
       .split(",")
       .map((f) => f.trim())
       .filter((f) => f.length > 0);
+  }
   return [];
 };
 
@@ -262,19 +342,21 @@ export const deleteFiles = (filesInput: any): ActionResult => {
     const files = parseFileList(filesInput);
     if (files.length === 0) return [false, "No files provided to delete"];
 
-    let deletedCount = 0;
-    files.forEach((file) => {
-      if (fs.existsSync(file)) {
-        fs.rmSync(file, { recursive: true, force: true });
-        deletedCount++;
+    const failures: string[] = [];
+    for (const rawFile of files) {
+      const file = normalizePath(rawFile);
+      if (!fs.existsSync(file)) {
+        failures.push(`${file} (not found)`);
+        continue;
       }
-    });
+      fs.rmSync(file, { recursive: true, force: true });
+      if (fs.existsSync(file)) failures.push(`${file} (still exists)`);
+    }
 
-    return [
-      true,
-      `Successfully deleted ${deletedCount} of ${files.length} files` +
-        (deletedCount < files.length ? " (some files were not found)" : ""),
-    ];
+    if (failures.length > 0) {
+      return [false, `DELETE_FILES failed for ${failures.length} items: ${failures.join("; ")}`];
+    }
+    return [true, `Successfully deleted ${files.length} files`];
   } catch (e) {
     return [false, String(e)];
   }
@@ -284,18 +366,32 @@ export const copyFiles = (filesInput: any, dest: string): ActionResult => {
   try {
     const files = parseFileList(filesInput);
     if (files.length === 0) return [false, "No files provided to copy"];
-    if (!fs.existsSync(dest)) fs.mkdirSync(dest, { recursive: true });
+    const destDir = normalizePath(dest);
+    if (!fs.existsSync(destDir)) fs.mkdirSync(destDir, { recursive: true });
 
-    let copiedCount = 0;
-    files.forEach((file) => {
-      if (fs.existsSync(file)) {
-        const fileName = path.basename(file);
-        fs.copyFileSync(file, path.join(dest, fileName));
-        copiedCount++;
+    const failures: string[] = [];
+    for (const rawFile of files) {
+      const file = normalizePath(rawFile);
+      if (!fs.existsSync(file)) {
+        failures.push(`${file} (not found)`);
+        continue;
       }
-    });
+      const fileName = path.basename(file);
+      const outPath = path.join(destDir, fileName);
+      fs.copyFileSync(file, outPath);
+      if (!fs.existsSync(outPath)) {
+        failures.push(`${file} -> ${outPath} (destination missing)`);
+        continue;
+      }
+      if (fileHash(file) !== fileHash(outPath)) {
+        failures.push(`${file} -> ${outPath} (content mismatch)`);
+      }
+    }
 
-    return [true, `Copied ${copiedCount} files to ${dest}`];
+    if (failures.length > 0) {
+      return [false, `COPY_FILES failed for ${failures.length} items: ${failures.join("; ")}`];
+    }
+    return [true, `Copied ${files.length} files to ${destDir}`];
   } catch (e) {
     return [false, String(e)];
   }
@@ -305,18 +401,37 @@ export const moveFiles = (filesInput: any, dest: string): ActionResult => {
   try {
     const files = parseFileList(filesInput);
     if (files.length === 0) return [false, "No files provided to move"];
-    if (!fs.existsSync(dest)) fs.mkdirSync(dest, { recursive: true });
+    const destDir = normalizePath(dest);
+    if (!fs.existsSync(destDir)) fs.mkdirSync(destDir, { recursive: true });
 
-    let movedCount = 0;
-    files.forEach((file) => {
-      if (fs.existsSync(file)) {
-        const fileName = path.basename(file);
-        fs.renameSync(file, path.join(dest, fileName));
-        movedCount++;
+    const failures: string[] = [];
+    for (const rawFile of files) {
+      const file = normalizePath(rawFile);
+      if (!fs.existsSync(file)) {
+        failures.push(`${file} (not found)`);
+        continue;
       }
-    });
+      const sourceHash = fileHash(file);
+      const fileName = path.basename(file);
+      const outPath = path.join(destDir, fileName);
+      fs.renameSync(file, outPath);
+      if (fs.existsSync(file)) {
+        failures.push(`${file} -> ${outPath} (source still exists)`);
+        continue;
+      }
+      if (!fs.existsSync(outPath)) {
+        failures.push(`${file} -> ${outPath} (destination missing)`);
+        continue;
+      }
+      if (fileHash(outPath) !== sourceHash) {
+        failures.push(`${file} -> ${outPath} (content mismatch)`);
+      }
+    }
 
-    return [true, `Moved ${movedCount} files to ${dest}`];
+    if (failures.length > 0) {
+      return [false, `MOVE_FILES failed for ${failures.length} items: ${failures.join("; ")}`];
+    }
+    return [true, `Moved ${files.length} files to ${destDir}`];
   } catch (e) {
     return [false, String(e)];
   }

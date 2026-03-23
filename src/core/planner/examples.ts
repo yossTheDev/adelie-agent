@@ -6,7 +6,12 @@ import { getStateExamples } from "../actions/state/examples.js";
 // ${getFSExamples()}
 // ${getLogicExamples()}
 export const getExamples = () => {
-  `EXAMPLES:
+  return `EXAMPLES:
 
+${getStateExamples()}
+
+${getFSExamples()}
+
+${getLogicExamples()}
 `;
 };

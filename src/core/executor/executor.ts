@@ -21,27 +21,125 @@ interface ExecutionResult {
  */
 const executionContext: Record<string, any> = {};
 
+const toBoolean = (value: any): boolean => {
+  if (typeof value === "boolean") return value;
+  if (typeof value === "number") return value !== 0;
+  if (typeof value === "string") {
+    const normalized = value.trim().toLowerCase();
+    if (["true", "1", "yes", "y", "on"].includes(normalized)) return true;
+    if (["false", "0", "no", "n", "off", ""].includes(normalized)) return false;
+  }
+  return Boolean(value);
+};
+
+const parseLoopItems = (itemsInput: any): any[] => {
+  if (Array.isArray(itemsInput)) return itemsInput;
+
+  if (typeof itemsInput === "string") {
+    const trimmed = itemsInput.trim();
+    if (!trimmed) return [];
+
+    try {
+      const parsed = JSON.parse(trimmed);
+      if (Array.isArray(parsed)) return parsed;
+    } catch {
+      // ignore and fallback to CSV
+    }
+
+    return trimmed
+      .split(",")
+      .map((item) => item.trim())
+      .filter((item) => item.length > 0);
+  }
+
+  return [];
+};
+
+const normalizeTemplate = (templateInput: any): Intent[] => {
+  if (Array.isArray(templateInput)) return templateInput;
+  if (templateInput && typeof templateInput === "object") return [templateInput];
+  return [];
+};
+
+const resolveConditionValue = async (
+  conditionInput: any,
+  localScope: Record<string, any>,
+): Promise<boolean> => {
+  if (
+    typeof conditionInput === "object" &&
+    conditionInput !== null &&
+    "action" in conditionInput
+  ) {
+    const actionName = String((conditionInput as any).action || "").toUpperCase();
+    const actionArgs = resolveArguments((conditionInput as any).args || {}, localScope);
+
+    if (actionName in ACTIONS) {
+      const [ok, result] = await ACTIONS[actionName](actionArgs);
+      return ok ? toBoolean(result) : false;
+    }
+  }
+
+  if (
+    typeof conditionInput === "object" &&
+    conditionInput !== null &&
+    "gate" in conditionInput
+  ) {
+    const gateName = String((conditionInput as any).gate || "").toUpperCase();
+    const gateArgs = { ...conditionInput };
+    delete (gateArgs as any).gate;
+    const resolvedGateArgs = resolveArguments(gateArgs, localScope);
+
+    if (gateName in ACTIONS) {
+      const [ok, result] = await ACTIONS[gateName](resolvedGateArgs);
+      return ok ? toBoolean(result) : false;
+    }
+  }
+
+  if (typeof conditionInput === "string" && conditionInput in localScope) {
+    return toBoolean(localScope[conditionInput]);
+  }
+
+  if (typeof conditionInput === "string" && conditionInput in executionContext) {
+    return toBoolean(executionContext[conditionInput]);
+  }
+
+  if (typeof conditionInput === "string" && conditionInput.startsWith("$$")) {
+    return toBoolean(resolveArguments(conditionInput, localScope));
+  }
+
+  return toBoolean(resolveArguments(conditionInput, localScope));
+};
+
 /**
  * Resolves arguments by replacing "$$id" references with actual values
  * from previous steps stored in the executionContext.
  */
-const resolveArguments = (args: any): any => {
+const resolveArguments = (
+  args: any,
+  localScope: Record<string, any> = {},
+): any => {
   if (typeof args === "string") {
     if (args.startsWith("$$")) {
       const refId = args.substring(2);
+      if (refId in localScope) return localScope[refId];
       return executionContext[refId] ?? args;
     }
-    return args;
+
+    return args.replace(/\$\$([A-Za-z0-9_-]+)/g, (match, refId) => {
+      if (refId in localScope) return String(localScope[refId]);
+      if (refId in executionContext) return String(executionContext[refId]);
+      return match;
+    });
   }
 
   if (Array.isArray(args)) {
-    return args.map(resolveArguments);
+    return args.map((item) => resolveArguments(item, localScope));
   }
 
   if (typeof args === "object" && args !== null) {
     const resolved: Record<string, any> = {};
     for (const [key, value] of Object.entries(args)) {
-      resolved[key] = resolveArguments(value);
+      resolved[key] = resolveArguments(value, localScope);
     }
     return resolved;
   }
@@ -55,13 +153,14 @@ const resolveArguments = (args: any): any => {
 export const executeAction = async (
   intent: Intent,
   debug: boolean = false,
+  localScope: Record<string, any> = {},
 ): Promise<ExecutionResult> => {
   if (debug)
     console.log(`\n[DEBUG] EXECUTING ACTION [${intent.id}]:`, intent.action);
 
   const action = intent.action;
   const rawArgs = intent.args || {};
-  const resolvedArgs = resolveArguments(rawArgs);
+  const resolvedArgs = resolveArguments(rawArgs, localScope);
 
   if (debug && JSON.stringify(rawArgs) !== JSON.stringify(resolvedArgs)) {
     console.log("[DEBUG] RESOLVED ARGS:", resolvedArgs);
@@ -78,48 +177,137 @@ export const executeAction = async (
   }
 
   if (action === "FOR_EACH") {
-    const items = resolvedArgs.items || [];
-    console.log(items);
-    const template: Intent[] = resolvedArgs.template || [];
-    for (const item of items) {
+    const items = parseLoopItems(resolvedArgs.items);
+    const template: Intent[] = normalizeTemplate(resolvedArgs.template);
+
+    if (template.length === 0) {
+      return {
+        id: intent.id,
+        success: false,
+        error: "FOR_EACH requires a valid template",
+        action,
+        args: resolvedArgs,
+      };
+    }
+
+    for (let index = 0; index < items.length; index++) {
+      const item = items[index];
       for (const t of template) {
+        const scoped = { ...localScope, item, index };
+        const resolvedTemplateId = resolveArguments(t.id, scoped);
+        const resolvedTemplateArgs = resolveArguments(t.args || {}, scoped);
         const cloned: Intent = {
           ...t,
-          args: { ...t.args, item },
-          id: `${intent.id}_${t.id}_${item}`,
+          args: resolvedTemplateArgs,
+          id: `${intent.id}_${String(resolvedTemplateId)}_${index}`,
         };
-        await executeAction(cloned, debug);
+        const nestedResult = await executeAction(cloned, debug, scoped);
+        if (!nestedResult.success) {
+          return {
+            id: intent.id,
+            success: false,
+            error: `FOR_EACH failed at item '${String(item)}' on step '${cloned.id}': ${nestedResult.error || nestedResult.result || "unknown error"}`,
+            action,
+            args: resolvedArgs,
+          };
+        }
       }
     }
-    return { id: intent.id, success: true, action, args: resolvedArgs };
+    executionContext[intent.id] = true;
+    return {
+      id: intent.id,
+      success: true,
+      result: true,
+      action,
+      args: resolvedArgs,
+    };
   }
 
   if (action === "IF") {
     const condition = resolvedArgs.condition;
     const thenSteps: Intent[] = resolvedArgs.then || [];
     const elseSteps: Intent[] = resolvedArgs.else || [];
-    const conditionMet = executionContext[condition] ?? false;
+    let conditionMet = await resolveConditionValue(condition, localScope);
+
+    if (
+      typeof condition === "string" &&
+      !condition.startsWith("$$") &&
+      !(condition in localScope) &&
+      !(condition in executionContext) &&
+      "data" in resolvedArgs
+    ) {
+      const [ok, result] = await ACTIONS.LOGIC_GATE({
+        condition,
+        data: resolvedArgs.data,
+      });
+      if (ok) conditionMet = toBoolean(result);
+    }
+
     const selectedSteps = conditionMet ? thenSteps : elseSteps;
-    for (const s of selectedSteps) await executeAction(s, debug);
-    return { id: intent.id, success: true, action, args: resolvedArgs };
+    for (let stepIndex = 0; stepIndex < selectedSteps.length; stepIndex++) {
+      const s = selectedSteps[stepIndex];
+      const cloned: Intent = { ...s, id: `${intent.id}_${stepIndex}_${s.id}` };
+      const nestedResult = await executeAction(cloned, debug, localScope);
+      if (!nestedResult.success) {
+        return {
+          id: intent.id,
+          success: false,
+          error: `IF branch step failed at '${cloned.id}': ${nestedResult.error || nestedResult.result || "unknown error"}`,
+          action,
+          args: resolvedArgs,
+        };
+      }
+    }
+    executionContext[intent.id] = conditionMet;
+    return {
+      id: intent.id,
+      success: true,
+      result: conditionMet,
+      action,
+      args: resolvedArgs,
+    };
   }
 
   if (action === "WHILE") {
-    const conditionKey = resolvedArgs.condition;
+    const conditionInput = resolvedArgs.condition;
     const body: Intent[] = resolvedArgs.body || [];
     let loopCounter = 0;
-    while (executionContext[conditionKey] ?? false) {
-      for (const b of body) {
+    while (true) {
+      const conditionMet = await resolveConditionValue(conditionInput, localScope);
+
+      if (!conditionMet) break;
+
+      for (let bodyIndex = 0; bodyIndex < body.length; bodyIndex++) {
+        const b = body[bodyIndex];
         const cloned: Intent = {
           ...b,
-          id: `${intent.id}_loop${loopCounter}_${b.id}`,
+          id: `${intent.id}_loop${loopCounter}_${bodyIndex}_${b.id}`,
         };
-        await executeAction(cloned, debug);
+        const nestedResult = await executeAction(cloned, debug, {
+          ...localScope,
+          loopCounter,
+        });
+        if (!nestedResult.success) {
+          return {
+            id: intent.id,
+            success: false,
+            error: `WHILE body step failed at '${cloned.id}': ${nestedResult.error || nestedResult.result || "unknown error"}`,
+            action,
+            args: resolvedArgs,
+          };
+        }
       }
       loopCounter++;
       if (loopCounter > 1000) break;
     }
-    return { id: intent.id, success: true, action, args: resolvedArgs };
+    executionContext[intent.id] = true;
+    return {
+      id: intent.id,
+      success: true,
+      result: true,
+      action,
+      args: resolvedArgs,
+    };
   }
 
   if (!(action in ACTIONS)) {
@@ -187,7 +375,7 @@ export const runPlan = async (
       const result = await executeAction(step, debug);
 
       if (step.action === "LOGIC_GATE") {
-        lastGateResult = Boolean(result.result);
+        lastGateResult = toBoolean(result.result);
       } else {
         lastGateResult = null;
       }
