@@ -3,6 +3,7 @@ import { buildMcpPlannerToolsText } from "../config/mcp-config.js";
 import { callOllama } from "../llm/llm.js";
 import { getPlannerPromt } from "./prompt.js";
 import { SkillLoader } from "../skills/skill-loader.js";
+import { getMemoryStore } from "../memory/memory-store.js";
 
 interface PlanAction {
   id: string;
@@ -80,6 +81,38 @@ const sanitizePlan = (raw: unknown): PlanAction[] => {
   return safe;
 };
 
+let plannerLoadedMemory: string = "";
+
+const loadPlannerMemory = async (): Promise<void> => {
+  try {
+    const memoryStore = getMemoryStore();
+    const allMemory = await memoryStore.list();
+    
+    if (allMemory.length === 0) {
+      plannerLoadedMemory = "";
+      return;
+    }
+
+    const memoryTexts: string[] = [];
+    for (const entry of allMemory) {
+      const value = await memoryStore.get(entry.key);
+      memoryTexts.push(`- ${entry.key}: ${JSON.stringify(value)}`);
+    }
+
+    plannerLoadedMemory = memoryTexts.length > 0
+      ? `Planner Memory Context (use for decision making):\n${memoryTexts.join("\n")}\n`
+      : "";
+  } catch {
+    plannerLoadedMemory = "";
+  }
+};
+
+export { loadPlannerMemory };
+
+const getPlannerMemoryContext = (userInput: string): string => {
+  return plannerLoadedMemory;
+};
+
 const expandSkillsInPlan = (plan: PlanAction[]): PlanAction[] => {
   const expandedPlan: PlanAction[] = [];
   
@@ -127,6 +160,10 @@ export async function generatePlan(
   await SkillLoader.loadAllSkills();
   const skillsText = SkillLoader.getSkillsForPlanner();
 
+  // Load all memory once at startup
+  await loadPlannerMemory();
+  const memoryContext = getPlannerMemoryContext(userInput);
+
   const actionsInfo = Object.entries(ACTION_ARGS).map(([action, args]) => {
     const argsStr = args.length > 0 ? `Args: [${args.join(", ")}]` : "No args";
     const desc = ACTION_DESCRIPTIONS[action] || "No description available";
@@ -137,7 +174,7 @@ export async function generatePlan(
   const mcpToolsText = buildMcpPlannerToolsText();
 
   // --- PHASE 1: GENERATION PROMPT ---
-  const basePrompt = getPlannerPromt({ actionsText, mcpToolsText, skillsText, userInput });
+  const basePrompt = getPlannerPromt({ actionsText, mcpToolsText, skillsText, userInput, memoryContext });
 
   let currentPlanRaw = (await callOllama(
     basePrompt,

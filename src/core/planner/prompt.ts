@@ -5,8 +5,9 @@ export const getPlannerPromt = (args: {
   mcpToolsText: string;
   skillsText?: string;
   userInput: string;
+  memoryContext?: string;
 }) => {
-  const { actionsText, mcpToolsText, skillsText, userInput } = args;
+  const { actionsText, mcpToolsText, skillsText, userInput, memoryContext } = args;
   return `
 You are the Strategic Planner for YI Agent. Convert the user request into a precise, deterministic sequence of actions.
 
@@ -30,7 +31,10 @@ ${mcpToolsText}
 ${skillsText ? `AVAILABLE SKILLS:
 ${skillsText}
 
-` : ""}USER INPUT:
+` : ""}MEMORY CONTEXT FOR PLANNING:
+${memoryContext}
+
+USER INPUT:
 ${userInput}
 
 STRICT ARCHITECTURE RULES:

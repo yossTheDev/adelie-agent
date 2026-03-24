@@ -18,21 +18,7 @@ PLAN: {
   ]
 }
 
-EXAMPLE 2: Retrieve and use stored information
-USER: "What are my preferred settings?"
-PLAN: {
-  "plan": [
-    {
-      "id": "get_prefs",
-      "action": "MEMORY_GET",
-      "args": {
-        "key": "user_preferences"
-      }
-    }
-  ]
-}
-
-EXAMPLE 3: Store project information for future reference
+EXAMPLE 2: Store project information for future reference
 USER: "Save this project info: Project Alpha uses React, Node.js, and PostgreSQL"
 PLAN: {
   "plan": [
@@ -49,7 +35,7 @@ PLAN: {
   ]
 }
 
-EXAMPLE 4: Search stored information
+EXAMPLE 3: Search stored information
 USER: "Find all information about React projects"
 PLAN: {
   "plan": [
@@ -58,34 +44,6 @@ PLAN: {
       "action": "MEMORY_SEARCH",
       "args": {
         "query": "react"
-      }
-    }
-  ]
-}
-
-EXAMPLE 5: Conditional logic using memory
-USER: "If I have saved admin credentials, use them, otherwise ask for them"
-PLAN: {
-  "plan": [
-    {
-      "id": "check_admin_creds",
-      "action": "MEMORY_GET",
-      "args": {
-        "key": "admin_credentials"
-      }
-    },
-    {
-      "id": "has_creds_gate",
-      "action": "LOGIC_GATE",
-      "args": {
-        "condition": "$$check_admin_creds"
-      }
-    },
-    {
-      "id": "use_creds",
-      "action": "LOGIN",
-      "args": {
-        "credentials": "$$check_admin_creds"
       }
     }
   ]
@@ -172,9 +130,8 @@ MEMORY USAGE PATTERNS:
 5. LEARNING: Remember corrections and preferences for future interactions
 6. CONTEXT: Maintain conversation context across sessions
 7. SEARCH & RETRIEVE: Find relevant information when needed
-8. CONDITIONAL LOGIC: Use MEMORY_GET + LOGIC_GATE for smart decisions
-9. BULK OPERATIONS: Combine MEMORY_SET with FOR_EACH for batch storage
-10. UPDATES: Use MEMORY_DELETE + MEMORY_SET for updates
+8. BULK OPERATIONS: Combine MEMORY_SET with FOR_EACH for batch storage
+9. UPDATES: Use MEMORY_DELETE + MEMORY_SET for updates
 
 BEST PRACTICES:
 - Use descriptive keys (e.g., "user_preferences" not "data1")

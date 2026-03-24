@@ -27,6 +27,8 @@ import { listMcpTools } from "../core/mcp/mcp-runtime.js";
 import { SkillLoader } from "../core/skills/skill-loader.js";
 import { McpInstaller } from "../core/mcp/mcp-installer.js";
 import { getMemoryStore } from "../core/memory/memory-store.js";
+import { loadAllMemory } from "../core/response/response.js";
+import { loadPlannerMemory } from "../core/planner/planner.js";
 
 const rl = readline.createInterface({
   input: process.stdin,
@@ -641,7 +643,17 @@ const startInteractiveCli = async () => {
 };
 
 const main = async () => {
-  const [, , command, ...args] = process.argv;
+  // Initialize memory loading at startup
+  await loadAllMemory();
+  await loadPlannerMemory();
+
+  const [command, ...args] = process.argv.slice(2);
+
+  if (!command) {
+    await startInteractiveCli();
+    return;
+  }
+
   if (command === "config") {
     handleConfigCommand(args);
     rl.close();

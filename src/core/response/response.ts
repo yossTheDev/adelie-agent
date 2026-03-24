@@ -13,39 +13,34 @@ function buildActionsText(): string {
   return actionsInfo.join("\n");
 }
 
-async function getRelevantMemoryContext(userInput: string): Promise<string> {
+let loadedMemory: string = "";
+
+const loadAllMemory = async (): Promise<void> => {
   try {
     const memoryStore = getMemoryStore();
-
-    const terms = userInput
-      .toLowerCase()
-      .split(/\s+/)
-      .filter((term) => term.length > 2)
-      .slice(0, 5);
-
-    if (terms.length === 0) return "";
-
-    const relevantMemories: string[] = [];
-
-    for (const term of terms) {
-      try {
-        const results = await memoryStore.search(term);
-        const topResults = results.slice(0, 2);
-        for (const result of topResults) {
-          const memoryText = `- ${result.key}: ${JSON.stringify(result.value)}`;
-          if (!relevantMemories.includes(memoryText)) {
-            relevantMemories.push(memoryText);
-          }
-        }
-      } catch {}
+    const allMemory = await memoryStore.list();
+    
+    if (allMemory.length === 0) {
+      loadedMemory = "";
+      return;
     }
 
-    return relevantMemories.length > 0
-      ? `User Known Data (internal use only):\n${relevantMemories.join("\n")}\n`
+    const memoryTexts: string[] = [];
+    for (const entry of allMemory) {
+      const value = await memoryStore.get(entry.key);
+      memoryTexts.push(`- ${entry.key}: ${JSON.stringify(value)}`);
+    }
+
+    loadedMemory = memoryTexts.length > 0
+      ? `User Known Data:\n${memoryTexts.join("\n")}\n`
       : "";
   } catch {
-    return "";
+    loadedMemory = "";
   }
+};
+
+function getRelevantMemoryContext(userInput: string): string {
+  return loadedMemory;
 }
 
 function buildAskPrompt(
@@ -66,13 +61,14 @@ ${systemRules}
 ${memoryContext}
 
 IMPORTANT:
-The "User Known Data" section is internal knowledge about the user.
+The "User Known Data" section contains information about the user that you MUST use to personalize your response.
 
 MEMORY USAGE RULES (CRITICAL):
-- Memory is INTERNAL. NEVER display or expose it.
-- NEVER print keys, values, or mention memory explicitly.
-- You MUST use it silently to personalize your response.
-- If memory contains preferences or facts, adapt naturally.
+- You MUST use memory to personalize and adapt your response.
+- Reference the information naturally without mentioning "memory" or showing keys.
+- If memory contains preferences, facts, or past interactions, incorporate them.
+- Use memory to provide more relevant and personalized answers.
+- NEVER ignore relevant memory information.
 
 MEMORY PRIORITY RULES (CRITICAL):
 - Memory is the PRIMARY source of truth about the user.
@@ -88,7 +84,7 @@ Instructions:
 - This is a normal conversation, not an action execution.
 - Be natural, friendly, and human-like.
 - Keep responses concise but engaging.
-- Use memory and context subtly, never explicitly.
+- Use memory and context ACTIVELY to personalize responses.
 - Add light personality when appropriate.
 - Emojis only at the end.
 `;
@@ -115,12 +111,14 @@ ${systemRules}
 ${memoryContext}
 
 IMPORTANT:
-The "User Known Data" section is internal knowledge about the user.
+The "User Known Data" section contains information about the user that you MUST use to personalize your response.
 
 MEMORY USAGE RULES (CRITICAL):
-- Memory is INTERNAL. NEVER expose it.
-- Do NOT print or reference memory directly.
-- Use it silently to personalize your response.
+- You MUST use memory to personalize and adapt your response.
+- Reference the information naturally without mentioning "memory" or showing keys.
+- If memory contains preferences, facts, or past interactions, incorporate them.
+- Use memory to provide more relevant and personalized answers.
+- NEVER ignore relevant memory information.
 
 MEMORY PRIORITY RULES (CRITICAL):
 - Memory is the PRIMARY source of truth.
@@ -134,7 +132,7 @@ Instructions:
 - Explain results clearly and naturally.
 - Do NOT describe internal steps or actions.
 - If something failed, explain why and how to fix it.
-- Personalize using memory and context naturally.
+- Personalize using memory and context ACTIVELY.
 - Keep it clear, helpful, and human.
 - Emojis only at the end.
 `;
@@ -147,7 +145,9 @@ export async function* generateResponse(
 ): AsyncGenerator<string> {
   const systemRules = getSystemContextAsRules();
   const actionsText = buildActionsText();
-  const memoryContext = await getRelevantMemoryContext(userInput);
+  
+  // Load memory context (sync now)
+  const memoryContext = getRelevantMemoryContext(userInput);
 
   const details = executionSummary.details || [];
   const isNoneAction =
@@ -169,3 +169,5 @@ export async function* generateResponse(
     yield chunk;
   }
 }
+
+export { loadAllMemory };
