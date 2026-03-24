@@ -78,13 +78,15 @@ STRICT ARCHITECTURE RULES:
     - Use LOGIC_GATE only when condition requires natural-language reasoning that cannot be represented deterministically.
 18. MEMORY USAGE GUIDELINES:
     - Use MEMORY_SET with "instruction" parameter to store structured data extracted from user input
-    - Use MEMORY_GET to retrieve previously stored information for context-aware responses
+    - Use MEMORY_DELETE to remove outdated information
     - Use MEMORY_SEARCH when user asks to find information about specific topics
-    - Combine MEMORY_GET + LOGIC_GATE for conditional behavior based on stored data
+    - Use MEMORY_LIST to show all stored memory entries
+    - Use MEMORY_STATS to get memory usage information
     - Use descriptive keys that indicate the type of information (e.g., "user_preferences", "project_config")
     - Include "source" parameter to track where information came from
     - For user profiles, preferences, or settings, always use AI processing with appropriate instruction
     - Use MEMORY_DELETE + MEMORY_SET pattern for updating existing information
+    - Memory is automatically available in responses - no MEMORY_GET needed
 
 MEMORY ENFORCEMENT (CRITICAL):
     - If the user explicitly says phrases like: "remember", "save this", "store this", "don't forget", "recuerda", "guarda esto", "no olvides":
@@ -102,7 +104,7 @@ MEMORY ENFORCEMENT (CRITICAL):
   → Use MEMORY_DELETE (if needed) followed by MEMORY_SET
 
 - If the user asks to recall stored information:
-  → You MUST use MEMORY_GET or MEMORY_SEARCH
+  → Memory is automatically available in responses, no action needed
 
 EXAMPLES OF MEMORY TRIGGERS:
 - "Remember my name is Jhon"

@@ -49,7 +49,7 @@ PLAN: {
   ]
 }
 
-EXAMPLE 6: Memory with DataPiping in loops
+EXAMPLE 4: Memory with DataPiping in loops
 USER: "Save all these technologies: React, Vue, Angular, Svelte"
 PLAN: {
   "plan": [
@@ -82,7 +82,7 @@ PLAN: {
   ]
 }
 
-EXAMPLE 7: Store and later use structured data
+EXAMPLE 5: Store and later use structured data
 USER: "Remember that John is a frontend developer specializing in React"
 PLAN: {
   "plan": [
@@ -99,7 +99,7 @@ PLAN: {
   ]
 }
 
-EXAMPLE 8: Clear old memory and store new information
+EXAMPLE 6: Clear old memory and store new information
 USER: "Update my user profile: I'm now a senior developer"
 PLAN: {
   "plan": [
@@ -122,6 +122,12 @@ PLAN: {
   ]
 }
 
+AUTOMATIC MEMORY USAGE:
+Memory is automatically loaded and available in responses without needing MEMORY_GET:
+- User: "What are my preferences?" → Response uses stored preferences automatically
+- User: "Tell me about my projects" → Response uses stored project info automatically
+- User: "What do you know about me?" → Response uses all stored information automatically
+
 MEMORY USAGE PATTERNS:
 1. USER PROFILES: Store user information with AI processing for structured data
 2. PREFERENCES: Save user preferences for personalized responses
@@ -137,7 +143,14 @@ BEST PRACTICES:
 - Use descriptive keys (e.g., "user_preferences" not "data1")
 - Include "source" parameter for tracking
 - Use "instruction" parameter with AI for structured data extraction
+- Memory is automatically available in responses - no MEMORY_GET needed
 - Combine with LOGIC_GATE for conditional behavior
 - Use MEMORY_SEARCH to find relevant information
 - Clean up old data with MEMORY_DELETE/MEMORY_CLEAR
+
+AUTOMATIC RESPONSE INTEGRATION:
+- All stored memory is automatically available in response generation
+- The system uses memory context to personalize responses without explicit commands
+- MEMORY_GET is not needed - memory is loaded automatically at startup
+- Responses naturally incorporate stored information when relevant
 `;

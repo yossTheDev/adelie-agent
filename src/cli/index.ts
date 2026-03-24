@@ -409,23 +409,6 @@ const handleMemoryCommand = async (args: string[]) => {
     return;
   }
 
-  if (subcommand === "get") {
-    const [key] = rest;
-    if (!key) {
-      console.log(chalk.yellow("Usage: yi memory get <key>"));
-      return;
-    }
-
-    try {
-      const value = await memoryStore.get(key);
-      console.log(chalk.cyanBright(`Memory key '${key}':`));
-      console.log(JSON.stringify(value, null, 2));
-    } catch (error) {
-      console.log(chalk.red(`Error getting memory: ${String(error)}`));
-    }
-    return;
-  }
-
   if (subcommand === "set") {
     const [key, ...restArgs] = rest;
     if (!key || restArgs.length === 0) {
@@ -548,7 +531,8 @@ const handleMemoryCommand = async (args: string[]) => {
   }
 
   console.log(chalk.yellow("Unknown memory command."));
-  console.log(chalk.yellow("Available commands: list, get, set, delete, clear, search, stats"));
+  console.log(chalk.yellow("Available commands: list, set, delete, clear, search, stats"));
+  console.log(chalk.gray("Note: Memory is automatically loaded and used in responses - no 'get' command needed"));
 };
 
 const startInteractiveCli = async () => {

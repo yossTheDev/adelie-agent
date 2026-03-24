@@ -13,11 +13,14 @@
       }
     },
     {
-      "id": "get_processed_user",
-      "action": "MEMORY_GET",
-      "args": {
-        "key": "ai_processed_user"
-      }
+      "id": "memory_list_after_ai",
+      "action": "MEMORY_LIST",
+      "args": {}
+    },
+    {
+      "id": "memory_stats_final",
+      "action": "MEMORY_STATS",
+      "args": {}
     },
     {
       "id": "store_simple_without_ai",

@@ -58,24 +58,6 @@ export const memorySet = async (args: {
 };
 
 /**
- * Retrieve a value from persistent memory
- */
-export const memoryGet = async (args: { key: string }): Promise<ActionResult> => {
-  try {
-    if (!args.key) {
-      return [false, "MEMORY_GET requires 'key' parameter"];
-    }
-
-    const memoryStore = getMemoryStore();
-    const value = await memoryStore.get(args.key);
-    
-    return [true, value];
-  } catch (error) {
-    return [false, `MEMORY_GET Error: ${String(error)}`];
-  }
-};
-
-/**
  * Delete a key from persistent memory
  */
 export const memoryDelete = async (args: { key: string }): Promise<ActionResult> => {
@@ -189,7 +171,6 @@ export const ACTIONS: Record<
   (args: any) => ActionResult | Promise<ActionResult>
 > = {
   MEMORY_SET: (args) => memorySet(args),
-  MEMORY_GET: (args) => memoryGet(args),
   MEMORY_DELETE: (args) => memoryDelete(args),
   MEMORY_CLEAR: (args) => memoryClear(args),
   MEMORY_SEARCH: (args) => memorySearch(args),
@@ -199,7 +180,6 @@ export const ACTIONS: Record<
 
 export const ACTION_ARGS: Record<string, string[]> = {
   MEMORY_SET: ["key", "value", "source?", "instruction?"],
-  MEMORY_GET: ["key"],
   MEMORY_DELETE: ["key"],
   MEMORY_CLEAR: ["key?"],
   MEMORY_SEARCH: ["query"],
@@ -209,7 +189,6 @@ export const ACTION_ARGS: Record<string, string[]> = {
 
 export const ACTION_DESCRIPTIONS: Record<string, string> = {
   MEMORY_SET: "Store a value in persistent memory with optional AI processing and source tracking",
-  MEMORY_GET: "Retrieve a value from persistent memory by key",
   MEMORY_DELETE: "Delete a specific key from persistent memory",
   MEMORY_CLEAR: "Clear all memory or a specific key if provided",
   MEMORY_SEARCH: "Search for keys and values matching a query string",
