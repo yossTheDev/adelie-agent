@@ -1,6 +1,6 @@
 # YI Agent
 
-A powerful, deterministic AI agent with Model Context Protocol (MCP) integration and Skills system.
+A powerful, deterministic AI agent with Model Context Protocol (MCP) integration, Skills system, and Automatic Memory Management.
 
 ## Features
 
@@ -8,6 +8,7 @@ A powerful, deterministic AI agent with Model Context Protocol (MCP) integration
 - **Deterministic Planning**: LLM-powered plan generation with strict validation
 - **Control Flow**: FOR_EACH, IF, WHILE loops with DataPiping
 - **State Management**: Persistent state with STATE_SET, STATE_APPEND, STATE_GET, STATE_CLEAR
+- **Automatic Memory**: Memory loads at startup and actively used in responses
 - **MCP Integration**: 8 pre-configured MCP presets for external tools
 - **Skills System**: Declarative skills with embedded MCP configuration
 - **CLI Interface**: Complete command-line interface for management
@@ -28,6 +29,14 @@ A powerful, deterministic AI agent with Model Context Protocol (MCP) integration
 - **Embedded MCP**: Skills can include their own MCP server configuration
 - **Auto-Installation**: MCP dependencies installed automatically
 - **Validation**: Strict validation of skill format and content
+
+### 🧠 Memory System
+- **Automatic Loading**: Memory loads at CLI startup for immediate availability
+- **Active Usage**: Memory automatically used to personalize responses
+- **Persistent Storage**: JSON-based key-value store with metadata
+- **AI Processing**: Optional AI processing for structured data extraction
+- **No Manual Retrieval**: Memory automatically available - no MEMORY_GET needed
+- **CLI Commands**: set, list, search, delete, clear, stats
 
 ### 📋 Key Features
 - **DataPiping**: Reference previous step results with `$$step_id`
@@ -86,6 +95,7 @@ yi "Find React repositories on GitHub"
 
 - **[Skills & MCP Guide](docs/SKILLS_MCP_GUIDE.md)**: Complete guide for using skills and MCP presets
 - **[MCP Config in Skills](docs/MCP_CONFIG_IN_SKILLS.md)**: Advanced configuration guide
+- **[Memory System](docs/MEMORY_SYSTEM.md)**: Automatic memory loading and active usage guide
 - **[Examples](examples/)**: Example skills and configurations
 - **[Architecture](docs/architecture.md)**: Core architecture and execution flow
 - **[Planner](docs/planner.md)**: Planner behavior, prompt rules, and determinism strategy

@@ -1,5 +1,34 @@
 # Changelog
 
+## v1.2.0
+
+### Added
+- **Automatic Memory Loading System**: Complete overhaul of memory management
+  - Memory loads automatically at CLI startup for immediate availability
+  - Memory context automatically included in planner and response generation
+  - Eliminated need for manual MEMORY_GET operations
+- **Active Memory Usage**: Enhanced response system to actively use stored memory
+  - Memory is automatically used to personalize responses without explicit commands
+  - Updated prompts to emphasize active memory integration over internal-only usage
+- **Memory Optimization**: Improved memory loading performance
+  - Full memory loaded once at startup instead of per-request searches
+  - Synchronous memory context retrieval for faster response generation
+- **Simplified Memory Commands**: Removed MEMORY_GET from CLI and actions
+  - Memory automatically available in responses - no manual retrieval needed
+  - Updated CLI help to reflect automatic memory usage
+
+### Changed
+- **Memory Actions**: Removed MEMORY_GET, kept SET, DELETE, CLEAR, SEARCH, LIST, STATS
+- **Response Prompts**: Updated to use memory actively rather than internally
+- **Planner Guidelines**: Updated to reflect automatic memory availability
+- **Test Fixtures**: Updated all memory tests to remove MEMORY_GET dependencies
+- **CLI Memory Commands**: Removed `memory get` command, updated help messages
+
+### Fixed
+- **Memory Loading Issues**: Resolved async/sync conflicts in memory initialization
+- **Test Compatibility**: Updated all memory-related tests to work with new system
+- **Documentation Alignment**: Updated examples and best practices for new memory model
+
 ## v1.1.0
 
 ### Added

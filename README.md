@@ -11,7 +11,9 @@ It is designed to minimize hallucinations by constraining planning to known acti
 - Deterministic logical gates and numeric comparisons
 - Verified filesystem operations (post-operation checks)
 - Persistent user config in `~/.yi-agente/config.json`
+- **Automatic Memory System**: Memory loads at startup and actively used in responses
 - MCP registry and runtime MCP tool exposure to planner
+- Skills system with `.skill.md` format and template expansion
 - Fixture-based plan integration tests
 
 ## Architecture
@@ -66,6 +68,20 @@ yarn tsx src/cli/index.ts mcp path
 
 Planner exposure of MCP tools is automatic from installed MCP registry entries.
 For live tool discovery from an MCP server, run `mcp sync-tools <server>`.
+
+### Memory Management
+
+```bash
+yarn tsx src/cli/index.ts memory set <key> <value> [--instruction "AI instruction"]
+yarn tsx src/cli/index.ts memory list
+yarn tsx src/cli/index.ts memory search <query>
+yarn tsx src/cli/index.ts memory delete <key>
+yarn tsx src/cli/index.ts memory clear
+yarn tsx src/cli/index.ts memory stats
+```
+
+Memory is automatically loaded at startup and actively used in responses - no manual retrieval needed.
+Use `memory set` to store information that will be automatically available in future conversations.
 
 ## Testing
 
