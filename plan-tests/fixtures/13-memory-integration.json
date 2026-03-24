@@ -1,0 +1,133 @@
+{
+  "name": "Memory Integration with DataPiping and Logic",
+  "description": "Test memory operations with DataPiping, IF conditions, and loops",
+  "plan": [
+    {
+      "id": "store_user_data",
+      "action": "MEMORY_SET",
+      "args": {
+        "key": "user_profile",
+        "value": {
+          "name": "Alice",
+          "role": "developer",
+          "preferences": ["typescript", "react", "node"]
+        },
+        "source": "integration_test"
+      }
+    },
+    {
+      "id": "get_user_data",
+      "action": "MEMORY_GET",
+      "args": {
+        "key": "user_profile"
+      }
+    },
+    {
+      "id": "check_developer_role",
+      "action": "IF",
+      "args": {
+        "condition": "$$get_user_data.role",
+        "then": [
+          {
+            "id": "store_dev_preference",
+            "action": "MEMORY_SET",
+            "args": {
+              "key": "dev_tools",
+              "value": ["vscode", "git", "docker"],
+              "source": "conditional_set"
+            }
+          }
+        ],
+        "else": [
+          {
+            "id": "store_user_preference",
+            "action": "MEMORY_SET",
+            "args": {
+              "key": "user_tools",
+              "value": ["browser", "office"],
+              "source": "conditional_set"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "id": "get_dev_tools",
+      "action": "MEMORY_GET",
+      "args": {
+        "key": "dev_tools"
+      }
+    },
+    {
+      "id": "iterate_preferences",
+      "action": "FOR_EACH",
+      "args": {
+        "items": "$$get_user_data.preferences",
+        "template": [
+          {
+            "id": "store_preference",
+            "action": "MEMORY_SET",
+            "args": {
+              "key": "pref_$$item",
+              "value": true,
+              "source": "loop_set"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "id": "get_typescript_pref",
+      "action": "MEMORY_GET",
+      "args": {
+        "key": "pref_typescript"
+      }
+    },
+    {
+      "id": "search_memory",
+      "action": "MEMORY_SEARCH",
+      "args": {
+        "query": "pref_"
+      }
+    },
+    {
+      "id": "cleanup_test",
+      "action": "MEMORY_CLEAR",
+      "args": {}
+    }
+  ],
+  "expectedResults": {
+    "store_user_data": "Stored value in memory under key 'user_profile'",
+    "get_user_data": {
+      "name": "Alice",
+      "role": "developer",
+      "preferences": ["typescript", "react", "node"]
+    },
+    "check_developer_role": true,
+    "store_dev_preference": "Stored value in memory under key 'dev_tools'",
+    "get_dev_tools": ["vscode", "git", "docker"],
+    "iterate_preferences": true,
+    "get_typescript_pref": true,
+    "search_memory": [
+      {
+        "key": "pref_typescript",
+        "value": true,
+        "timestamp": "timestamp",
+        "source": "loop_set"
+      },
+      {
+        "key": "pref_react",
+        "value": true,
+        "timestamp": "timestamp",
+        "source": "loop_set"
+      },
+      {
+        "key": "pref_node",
+        "value": true,
+        "timestamp": "timestamp",
+        "source": "loop_set"
+      }
+    ],
+    "cleanup_test": "Cleared all memory keys"
+  }
+}

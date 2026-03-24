@@ -1,0 +1,52 @@
+{
+  "name": "Memory AI Processing Test",
+  "description": "Test memory operations with AI processing for intelligent data extraction",
+  "plan": [
+    {
+      "id": "store_user_with_ai",
+      "action": "MEMORY_SET",
+      "args": {
+        "key": "ai_processed_user",
+        "value": "John is a 25-year-old frontend developer who specializes in React and TypeScript. He works at StartupCo and loves coffee.",
+        "source": "test",
+        "instruction": "Extract user information as structured JSON with name, age, profession, skills, company, and preferences fields"
+      }
+    },
+    {
+      "id": "get_processed_user",
+      "action": "MEMORY_GET",
+      "args": {
+        "key": "ai_processed_user"
+      }
+    },
+    {
+      "id": "store_simple_without_ai",
+      "action": "MEMORY_SET",
+      "args": {
+        "key": "simple_data",
+        "value": "This is simple data without AI processing",
+        "source": "test"
+      }
+    },
+    {
+      "id": "get_simple_data",
+      "action": "MEMORY_GET",
+      "args": {
+        "key": "simple_data"
+      }
+    }
+  ],
+  "expectedResults": {
+    "store_user_with_ai": "Stored processed value in memory under key 'ai_processed_user'",
+    "get_processed_user": {
+      "name": "John",
+      "age": 25,
+      "profession": "frontend developer",
+      "skills": ["React", "TypeScript"],
+      "company": "StartupCo",
+      "preferences": ["coffee"]
+    },
+    "store_simple_without_ai": "Stored processed value in memory under key 'simple_data'",
+    "get_simple_data": "This is simple data without AI processing"
+  }
+}

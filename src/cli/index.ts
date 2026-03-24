@@ -26,6 +26,7 @@ import {
 import { listMcpTools } from "../core/mcp/mcp-runtime.js";
 import { SkillLoader } from "../core/skills/skill-loader.js";
 import { McpInstaller } from "../core/mcp/mcp-installer.js";
+import { getMemoryStore } from "../core/memory/memory-store.js";
 
 const rl = readline.createInterface({
   input: process.stdin,
@@ -380,6 +381,174 @@ const handleSkillsCommand = async (args: string[]) => {
   console.log(chalk.yellow("Available commands: list, install, remove, validate"));
 };
 
+const handleMemoryCommand = async (args: string[]) => {
+  const [subcommand, ...rest] = args;
+  const memoryStore = getMemoryStore();
+
+  if (!subcommand || subcommand === "list") {
+    try {
+      const list = await memoryStore.list();
+      console.log(chalk.cyanBright("Memory keys:"));
+      if (list.length === 0) {
+        console.log(chalk.gray("  No memory entries found."));
+      } else {
+        for (const entry of list) {
+          console.log(`- ${chalk.magenta(entry.key)}`);
+          console.log(`  Created: ${chalk.gray(new Date(entry.timestamp).toLocaleString())}`);
+          if (entry.source) {
+            console.log(`  Source: ${chalk.gray(entry.source)}`);
+          }
+          console.log("");
+        }
+      }
+    } catch (error) {
+      console.log(chalk.red(`Error listing memory: ${String(error)}`));
+    }
+    return;
+  }
+
+  if (subcommand === "get") {
+    const [key] = rest;
+    if (!key) {
+      console.log(chalk.yellow("Usage: yi memory get <key>"));
+      return;
+    }
+
+    try {
+      const value = await memoryStore.get(key);
+      console.log(chalk.cyanBright(`Memory key '${key}':`));
+      console.log(JSON.stringify(value, null, 2));
+    } catch (error) {
+      console.log(chalk.red(`Error getting memory: ${String(error)}`));
+    }
+    return;
+  }
+
+  if (subcommand === "set") {
+    const [key, ...restArgs] = rest;
+    if (!key || restArgs.length === 0) {
+      console.log(chalk.yellow("Usage: yi memory set <key> <value> [--instruction \"AI instruction\"]"));
+      console.log(chalk.gray("Note: Use quotes around values with spaces"));
+      console.log(chalk.gray("Example: yi memory set user_profile \"Alice is a developer\" --instruction \"Extract user information as JSON\""));
+      return;
+    }
+
+    // Parse instruction flag
+    let value = "";
+    let instruction = "";
+    let instructionFound = false;
+    
+    for (let i = 0; i < restArgs.length; i++) {
+      if (restArgs[i] === "--instruction" && i + 1 < restArgs.length) {
+        instruction = restArgs[i + 1];
+        instructionFound = true;
+        i++; // Skip the next argument as it's the instruction value
+      } else if (!instructionFound) {
+        value += (value ? " " : "") + restArgs[i];
+      }
+    }
+    
+    try {
+      // Try to parse as JSON first
+      let parsedValue;
+      try {
+        parsedValue = JSON.parse(value);
+      } catch {
+        parsedValue = value;
+      }
+
+      // Use the memory action instead of direct store to support AI processing
+      const { memorySet } = await import("../core/actions/memory/memory.js");
+      const [success, result] = await memorySet({
+        key,
+        value: parsedValue,
+        source: "cli",
+        instruction: instruction || undefined
+      });
+      
+      if (success) {
+        console.log(chalk.green(`Set memory key '${key}'${instruction ? " with AI processing" : ""}`));
+      } else {
+        console.log(chalk.red(`Error setting memory: ${result}`));
+      }
+    } catch (error) {
+      console.log(chalk.red(`Error setting memory: ${String(error)}`));
+    }
+    return;
+  }
+
+  if (subcommand === "delete") {
+    const [key] = rest;
+    if (!key) {
+      console.log(chalk.yellow("Usage: yi memory delete <key>"));
+      return;
+    }
+
+    try {
+      await memoryStore.delete(key);
+      console.log(chalk.green(`Deleted memory key '${key}'`));
+    } catch (error) {
+      console.log(chalk.red(`Error deleting memory: ${String(error)}`));
+    }
+    return;
+  }
+
+  if (subcommand === "clear") {
+    try {
+      await memoryStore.clear();
+      console.log(chalk.green("Cleared all memory"));
+    } catch (error) {
+      console.log(chalk.red(`Error clearing memory: ${String(error)}`));
+    }
+    return;
+  }
+
+  if (subcommand === "search") {
+    const [query] = rest;
+    if (!query) {
+      console.log(chalk.yellow("Usage: yi memory search <query>"));
+      return;
+    }
+
+    try {
+      const results = await memoryStore.search(query);
+      console.log(chalk.cyanBright(`Search results for '${query}':`));
+      if (results.length === 0) {
+        console.log(chalk.gray("  No matching entries found."));
+      } else {
+        for (const result of results) {
+          console.log(`- ${chalk.magenta(result.key)}`);
+          console.log(`  Value: ${JSON.stringify(result.value)}`);
+          console.log(`  Created: ${chalk.gray(new Date(result.timestamp).toLocaleString())}`);
+          if (result.source) {
+            console.log(`  Source: ${chalk.gray(result.source)}`);
+          }
+          console.log("");
+        }
+      }
+    } catch (error) {
+      console.log(chalk.red(`Error searching memory: ${String(error)}`));
+    }
+    return;
+  }
+
+  if (subcommand === "stats") {
+    try {
+      const stats = await memoryStore.stats();
+      console.log(chalk.cyanBright("Memory statistics:"));
+      console.log(`Total keys: ${chalk.magenta(stats.totalKeys)}`);
+      console.log(`Total size: ${chalk.magenta(stats.totalSize)}`);
+      console.log(`Last updated: ${chalk.magenta(stats.lastUpdated)}`);
+    } catch (error) {
+      console.log(chalk.red(`Error getting memory stats: ${String(error)}`));
+    }
+    return;
+  }
+
+  console.log(chalk.yellow("Unknown memory command."));
+  console.log(chalk.yellow("Available commands: list, get, set, delete, clear, search, stats"));
+};
+
 const startInteractiveCli = async () => {
   console.log(getBanner());
   console.log(chalk.gray("Type 'exit' to quit\n"));
@@ -487,6 +656,12 @@ const main = async () => {
 
   if (command === "skills") {
     await handleSkillsCommand(args);
+    rl.close();
+    return;
+  }
+
+  if (command === "memory") {
+    await handleMemoryCommand(args);
     rl.close();
     return;
   }

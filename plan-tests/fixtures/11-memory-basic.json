@@ -1,0 +1,72 @@
+{
+  "name": "Memory Basic Operations",
+  "description": "Test basic memory operations: SET, GET, DELETE, CLEAR",
+  "plan": [
+    {
+      "id": "memory_set_string",
+      "action": "MEMORY_SET",
+      "args": {
+        "key": "test_string",
+        "value": "Hello World",
+        "source": "test"
+      }
+    },
+    {
+      "id": "memory_get_string",
+      "action": "MEMORY_GET",
+      "args": {
+        "key": "test_string"
+      }
+    },
+    {
+      "id": "memory_set_object",
+      "action": "MEMORY_SET",
+      "args": {
+        "key": "test_object",
+        "value": {
+          "name": "Test User",
+          "preferences": {
+            "theme": "dark",
+            "language": "en"
+          }
+        },
+        "source": "test"
+      }
+    },
+    {
+      "id": "memory_get_object",
+      "action": "MEMORY_GET",
+      "args": {
+        "key": "test_object"
+      }
+    },
+    {
+      "id": "memory_delete_key",
+      "action": "MEMORY_DELETE",
+      "args": {
+        "key": "test_string"
+      }
+    },
+    {
+      "id": "memory_verify_deleted",
+      "action": "MEMORY_GET",
+      "args": {
+        "key": "test_string"
+      }
+    }
+  ],
+  "expectedResults": {
+    "memory_set_string": "Stored value in memory under key 'test_string'",
+    "memory_get_string": "Hello World",
+    "memory_set_object": "Stored value in memory under key 'test_object'",
+    "memory_get_object": {
+      "name": "Test User",
+      "preferences": {
+        "theme": "dark",
+        "language": "en"
+      }
+    },
+    "memory_delete_key": "Deleted memory key 'test_string'",
+    "memory_verify_deleted": "MEMORY_GET Error: Memory key 'test_string' not found"
+  }
+}

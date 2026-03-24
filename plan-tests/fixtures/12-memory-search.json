@@ -1,0 +1,136 @@
+{
+  "name": "Memory Search and List Operations",
+  "description": "Test memory search, list, and stats operations",
+  "plan": [
+    {
+      "id": "setup_data_1",
+      "action": "MEMORY_SET",
+      "args": {
+        "key": "user_preference",
+        "value": {
+          "theme": "dark",
+          "language": "en"
+        },
+        "source": "user_input"
+      }
+    },
+    {
+      "id": "setup_data_2",
+      "action": "MEMORY_SET",
+      "args": {
+        "key": "project_config",
+        "value": {
+          "name": "my-project",
+          "framework": "react"
+        },
+        "source": "cli"
+      }
+    },
+    {
+      "id": "setup_data_3",
+      "action": "MEMORY_SET",
+      "args": {
+        "key": "last_search",
+        "value": "react hooks tutorial",
+        "source": "planner"
+      }
+    },
+    {
+      "id": "memory_list_all",
+      "action": "MEMORY_LIST",
+      "args": {}
+    },
+    {
+      "id": "memory_search_user",
+      "action": "MEMORY_SEARCH",
+      "args": {
+        "query": "user"
+      }
+    },
+    {
+      "id": "memory_search_config",
+      "action": "MEMORY_SEARCH",
+      "args": {
+        "query": "config"
+      }
+    },
+    {
+      "id": "memory_search_react",
+      "action": "MEMORY_SEARCH",
+      "args": {
+        "query": "react"
+      }
+    },
+    {
+      "id": "memory_stats",
+      "action": "MEMORY_STATS",
+      "args": {}
+    },
+    {
+      "id": "clear_test_data",
+      "action": "MEMORY_CLEAR",
+      "args": {}
+    }
+  ],
+  "expectedResults": {
+    "setup_data_1": "Stored value in memory under key 'user_preference'",
+    "setup_data_2": "Stored value in memory under key 'project_config'",
+    "setup_data_3": "Stored value in memory under key 'last_search'",
+    "memory_list_all": [
+      {
+        "key": "user_preference",
+        "timestamp": "timestamp",
+        "source": "user_input"
+      },
+      {
+        "key": "project_config",
+        "timestamp": "timestamp",
+        "source": "cli"
+      },
+      {
+        "key": "last_search",
+        "timestamp": "timestamp",
+        "source": "planner"
+      }
+    ],
+    "memory_search_user": [
+      {
+        "key": "user_preference",
+        "value": {
+          "theme": "dark",
+          "language": "en"
+        },
+        "timestamp": "timestamp",
+        "source": "user_input"
+      }
+    ],
+    "memory_search_config": [
+      {
+        "key": "project_config",
+        "value": {
+          "name": "my-project",
+          "framework": "react"
+        },
+        "timestamp": "timestamp",
+        "source": "cli"
+      }
+    ],
+    "memory_search_react": [
+      {
+        "key": "project_config",
+        "value": {
+          "name": "my-project",
+          "framework": "react"
+        },
+        "timestamp": "timestamp",
+        "source": "cli"
+      }
+    ],
+    "memory_stats": {
+      "totalKeys": 3,
+      "totalSize": "size bytes",
+      "lastUpdated": "timestamp"
+    },
+    "clear_test_data": "Cleared all memory keys"
+  }
+}

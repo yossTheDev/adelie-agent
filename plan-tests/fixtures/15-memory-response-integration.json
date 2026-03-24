@@ -1,0 +1,29 @@
+{
+  "name": "Memory Response Integration Test",
+  "description": "Test that memory context is properly included in responses",
+  "plan": [
+    {
+      "id": "store_user_info",
+      "action": "MEMORY_SET",
+      "args": {
+        "key": "user_profile",
+        "value": "Alice is a senior frontend developer who loves React and TypeScript",
+        "source": "test",
+        "instruction": "Extract user profile as JSON with name, level, role, and preferences fields"
+      }
+    },
+    {
+      "id": "store_preferences",
+      "action": "MEMORY_SET",
+      "args": {
+        "key": "ui_preferences",
+        "value": "dark theme, large fonts, VS Code editor",
+        "source": "test"
+      }
+    }
+  ],
+  "expectedResults": {
+    "store_user_info": "Stored processed value in memory under key 'user_profile'",
+    "store_preferences": "Stored processed value in memory under key 'ui_preferences'"
+  }
+}
