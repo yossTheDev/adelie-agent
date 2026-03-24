@@ -28,6 +28,7 @@ import { McpInstaller } from "../core/mcp/mcp-installer.js";
 import { getMemoryStore } from "../core/memory/memory-store.js";
 import { loadAllMemory } from "../core/response/response.js";
 import { loadPlannerMemory } from "../core/planner/planner.js";
+import { callOllama } from "../core/llm/llm.js";
 
 const rl = readline.createInterface({
   input: process.stdin,
@@ -121,7 +122,7 @@ const renderPlan = (steps: any[]): void => {
   console.log();
 };
 
-const getBanner = async (): Promise<string> => {
+const getBanner = async (mode: string = "planner"): Promise<string> => {
   const cfg = readAgentConfig();
   const actionCount = Object.keys(ACTION_ARGS).length;
   const mcpServers = listMcpServers();
@@ -132,6 +133,27 @@ const getBanner = async (): Promise<string> => {
   for (const server of mcpServers) {
     mcpToolsCount += server.tools?.length || 0;
   }
+
+  // Mode-specific colors and messages
+  const modeConfig = {
+    ask: {
+      color: "🟢",
+      title: "Ask Mode",
+      description: "Direct conversation - perfect for questions and chat"
+    },
+    planner: {
+      color: "🔵", 
+      title: "Planner Mode",
+      description: "Planning & execution - perfect for complex tasks"
+    },
+    auto: {
+      color: "🟡",
+      title: "Auto Mode", 
+      description: "Intelligent mode selection based on your query"
+    }
+  };
+
+  const currentMode = modeConfig[mode as keyof typeof modeConfig] || modeConfig.planner;
 
   const ascii = `
     ▲   ▲
@@ -151,6 +173,9 @@ const getBanner = async (): Promise<string> => {
     "",
     `Hi there! I'm Adelie, your local assistant.`,
     `Currently using: ${cfg.model}`,
+    "",
+    `${currentMode.color} Current Mode: ${currentMode.title}`,
+    `   ${currentMode.description}`,
     "",
     ...stats,
     "",
@@ -189,8 +214,9 @@ COMMANDS:
   memory              Manage memory
 
 MODES:
-  --ask               Direct conversation mode (default for simple queries)
-  --planner           Planning and execution mode (default for complex tasks)
+  --ask               Direct conversation mode (for simple questions)
+  --planner           Planning and execution mode (default for most tasks)
+  --auto              Auto-detect mode based on query complexity
 
 EXAMPLES:
   adelie "what is the weather like?"                    # Auto-detect mode
@@ -636,7 +662,7 @@ const handleMemoryCommand = async (args: string[]) => {
 };
 
 const startInteractiveCli = async () => {
-  console.log(await getBanner());
+  console.log(await getBanner("auto"));
   console.log("Type 'exit' to quit\n");
 
   while (true) {
@@ -645,12 +671,8 @@ const startInteractiveCli = async () => {
     if (userInput.toLowerCase() === "exit") break;
     if (!userInput.trim()) continue;
 
-    // Auto-detect mode for interactive mode
-    const actionWords = ["create", "delete", "modify", "update", "install", "build", "run", "execute", "search", "find", "list", "show"];
-    const hasActionWords = actionWords.some(word => userInput.toLowerCase().includes(word));
-    const isShortQuery = userInput.split(" ").length <= 10;
-    
-    const mode = (isShortQuery && !hasActionWords) ? "ask" : "planner";
+    // Auto-detect mode for interactive mode - use LLM for intelligent detection
+    const mode = await detectModeWithLLM(userInput);
     
     if (mode === "ask") {
       await handleAskMode(userInput);
@@ -741,6 +763,38 @@ const startInteractiveCli = async () => {
   }
 
   rl.close();
+};
+
+const detectModeWithLLM = async (query: string): Promise<"ask" | "planner"> => {
+  const prompt = `Analyze this user query and determine if it requires action planning or is just a conversation:
+
+Query: "${query}"
+
+Respond with ONLY "ask" if it's:
+- A simple question or conversation
+- Asking for information or explanation
+- Casual chat or greeting
+- Request for opinion or creative content
+
+Respond with ONLY "planner" if it's:
+- Request to create, delete, modify, or manipulate files/systems
+- Request to search, find, or locate specific items
+- Request to install, build, or execute commands
+- Any task that requires step-by-step execution
+
+Your response (ask/planner):`;
+
+  try {
+    const config = readAgentConfig();
+    const response = await callOllama(prompt, config.model, false);
+    const result = response.toString().trim().toLowerCase();
+    return result.includes("planner") ? "planner" : "ask";
+  } catch {
+    // Fallback to simple heuristic if LLM fails
+    const actionWords = ["create", "delete", "modify", "update", "install", "build", "run", "execute", "search", "find", "list", "show"];
+    const hasActionWords = actionWords.some(word => query.toLowerCase().includes(word));
+    return hasActionWords ? "planner" : "ask";
+  }
 };
 
 const handleAskMode = async (query: string) => {
@@ -924,14 +978,9 @@ const main = async () => {
     mode = "planner";
   }
   
-  // Auto-detect mode for simple queries vs complex tasks
+  // Auto-detect mode using LLM for intelligent detection
   if (mode === "auto") {
-    // Simple heuristic: if query is short and doesn't contain action words, use ask mode
-    const actionWords = ["create", "delete", "modify", "update", "install", "build", "run", "execute", "search", "find", "list", "show"];
-    const hasActionWords = actionWords.some(word => query.toLowerCase().includes(word));
-    const isShortQuery = query.split(" ").length <= 10;
-    
-    mode = (isShortQuery && !hasActionWords) ? "ask" : "planner";
+    mode = await detectModeWithLLM(query);
   }
   
   if (mode === "ask") {
