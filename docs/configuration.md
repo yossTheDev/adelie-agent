@@ -2,7 +2,7 @@
 
 User configuration is stored at:
 
-- `~/.yi-agente/config.json`
+- `~/.adelie/config.json`
 
 ## Fields
 

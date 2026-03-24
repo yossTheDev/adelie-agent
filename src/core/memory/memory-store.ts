@@ -21,7 +21,7 @@ export class MemoryStore {
   private loaded = false;
 
   constructor(storageDir?: string) {
-    const configDir = storageDir || path.join(os.homedir(), ".yi-agent");
+    const configDir = storageDir || path.join(os.homedir(), ".adelie");
     this.filePath = path.join(configDir, "memory.json");
   }
 

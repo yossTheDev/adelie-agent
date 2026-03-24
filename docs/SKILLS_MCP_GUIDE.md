@@ -231,8 +231,8 @@ yi mcp set-env github GITHUB_TOKEN your_token_here
 
 ## File Locations
 
-- **Skills Directory**: `~/.yi-agent/skills/`
-- **MCP Config**: `~/.yi-agent/mcp-config.json`
+- **Skills Directory**: `~/.adelie/skills/`
+- **MCP Config**: `~/.adelie/mcp-config.json`
 
 ## Troubleshooting
 

@@ -16,15 +16,17 @@ const withClient = async <T>(
   const transport = new StdioClientTransport({
     command: server.command,
     args: server.args,
-    env: {
-      ...process.env,
-      ...(server.env || {}),
-    },
+    env: Object.fromEntries(
+      Object.entries({
+        ...process.env,
+        ...(server.env || {}),
+      }).filter(([_, value]) => value !== undefined)
+    ) as Record<string, string>,
   });
 
   const client = new Client(
     {
-      name: "yi-agent",
+      name: "adelie",
       version: "1.0.0",
     },
     {

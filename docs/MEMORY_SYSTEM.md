@@ -21,7 +21,7 @@ The memory system provides persistent storage and automatic retrieval of user in
 - **Priority System**: Memory takes precedence over system context when conflicts occur
 
 ### 💾 Persistent Storage
-- **JSON-based Storage**: Memory stored in `~/.yi-agent/memory.json`
+- **JSON-based Storage**: Memory stored in `~/.adelie/memory.json`
 - **Key-Value Structure**: Simple and efficient data organization
 - **Metadata Tracking**: Automatic timestamp and source tracking
 - **Type Flexibility**: Support for strings, numbers, objects, and arrays
@@ -122,7 +122,7 @@ User: "Help me set up a new project"
 - Use appropriate data types (objects for structured data, strings for simple values)
 
 ### Privacy and Security
-- Memory is stored locally in `~/.yi-agent/`
+- Memory is stored locally in `~/.adelie/`
 - No data is transmitted to external services
 - Sensitive data should be stored with appropriate keys
 - Regular cleanup of outdated information using `memory clear`
@@ -139,8 +139,8 @@ The planner automatically has access to all stored memory when generating plans:
 ## Troubleshooting
 
 ### Memory Not Loading
-- Check file permissions in `~/.yi-agent/`
-- Verify memory file exists: `ls ~/.yi-agent/memory.json`
+- Check file permissions in `~/.adelie/`
+- Verify memory file exists: `ls ~/.adelie/memory.json`
 - Restart CLI to trigger memory loading
 
 ### AI Processing Issues

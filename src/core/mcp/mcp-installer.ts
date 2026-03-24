@@ -10,7 +10,7 @@ import { installPresetSkills } from "./preset-skills.js";
 const execAsync = promisify(exec);
 
 export class McpInstaller {
-  private static readonly CONFIG_DIR = path.join(os.homedir(), ".yi-agent");
+  private static readonly CONFIG_DIR = path.join(os.homedir(), ".adelie");
   private static readonly CONFIG_FILE = path.join(this.CONFIG_DIR, "mcp-config.json");
   private static readonly CLAUDE_CONFIG_FILE = path.join(os.homedir(), ".claude_desktop_config.json");
 

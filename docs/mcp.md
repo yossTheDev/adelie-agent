@@ -4,7 +4,7 @@ YI Agent supports local MCP registration and planner exposure.
 
 ## Storage
 
-- `~/.yi-agente/mcp.json`
+- `~/.adelie/mcp.json`
 
 ## Registered Server Schema
 

@@ -6,7 +6,7 @@ import { SkillParser } from "./skill-parser.js";
 import { McpInstaller } from "../mcp/mcp-installer.js";
 
 export class SkillLoader {
-  private static readonly SKILLS_DIR = path.join(os.homedir(), ".yi-agent", "skills");
+  private static readonly SKILLS_DIR = path.join(os.homedir(), ".adelie", "skills");
   private static skills: Map<string, Skill> = new Map();
 
   static ensureSkillsDirectory(): void {

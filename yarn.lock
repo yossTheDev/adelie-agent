@@ -314,6 +314,25 @@ __metadata:
   languageName: node
   linkType: hard
 
+"adelie@workspace:.":
+  version: 0.0.0-use.local
+  resolution: "adelie@workspace:."
+  dependencies:
+    "@modelcontextprotocol/sdk": "npm:^1.27.1"
+    "@types/node": "npm:^25.5.0"
+    boxen: "npm:^8.0.1"
+    clipboardy: "npm:^5.3.1"
+    commander: "npm:^14.0.3"
+    open: "npm:^11.0.0"
+    ora: "npm:^9.3.0"
+    tsx: "npm:^4.21.0"
+    typescript: "npm:^5.9.3"
+    zod: "npm:^4.3.6"
+  bin:
+    adelie: ./bin/adelie
+  languageName: unknown
+  linkType: soft
+
 "agent-base@npm:^7.1.0, agent-base@npm:^7.1.2":
   version: 7.1.4
   resolution: "agent-base@npm:7.1.4"
@@ -2388,26 +2407,6 @@ __metadata:
   checksum: 10c0/a499c81ce6d4a1d260d4ea0f6d49ab4da09681e32c3f0472dee16667ed69d01dae63a3b81745a24bd78476ec4fcf856114cb4896ace738e01da34b2c42235416
   languageName: node
   linkType: hard
-
-"yi-agent@workspace:.":
-  version: 0.0.0-use.local
-  resolution: "yi-agent@workspace:."
-  dependencies:
-    "@modelcontextprotocol/sdk": "npm:^1.27.1"
-    "@types/node": "npm:^25.5.0"
-    boxen: "npm:^8.0.1"
-    chalk: "npm:^5.6.2"
-    clipboardy: "npm:^5.3.1"
-    commander: "npm:^14.0.3"
-    open: "npm:^11.0.0"
-    ora: "npm:^9.3.0"
-    tsx: "npm:^4.21.0"
-    typescript: "npm:^5.9.3"
-    zod: "npm:^4.3.6"
-  bin:
-    yi: ./bin/yi
-  languageName: unknown
-  linkType: soft
 
 "yoctocolors@npm:^2.1.1":
   version: 2.1.2

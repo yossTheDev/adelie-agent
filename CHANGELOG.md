@@ -3,6 +3,11 @@
 ## v1.2.0
 
 ### Added
+- **Dual Operation Modes**: Implemented ask and planner modes for optimized user experience
+  - **Ask Mode** (`--ask`): Direct conversation that skips planning phase, perfect for simple questions and conversations
+  - **Planner Mode** (`--planner`): Full planning and execution pipeline for complex tasks requiring multiple steps
+  - **Auto-detection**: Intelligent mode selection based on query complexity and action words
+  - **CLI Options**: Added `--ask` and `--planner` flags for manual mode selection
 - **Automatic Memory Loading System**: Complete overhaul of memory management
   - Memory loads automatically at CLI startup for immediate availability
   - Memory context automatically included in planner and response generation
@@ -18,6 +23,10 @@
   - Updated CLI help to reflect automatic memory usage
 
 ### Changed
+- **CLI Interface**: Enhanced with dual-mode support
+  - Added `--ask` and `--planner` flags for mode selection
+  - Updated help documentation to explain mode differences
+  - Auto-detection logic for intelligent mode selection
 - **Memory Actions**: Removed MEMORY_GET, kept SET, DELETE, CLEAR, SEARCH, LIST, STATS
 - **Response Prompts**: Updated to use memory actively rather than internally
 - **Planner Guidelines**: Updated to reflect automatic memory availability
@@ -85,9 +94,9 @@
 - New system action:
   - `SYSTEM_INFO`
 - Persistent user-level agent configuration in:
-  - `~/.yi-agente/config.json`
+  - `~/.adelie/config.json`
 - Persistent MCP server registry in:
-  - `~/.yi-agente/mcp.json`
+  - `~/.adelie/mcp.json`
 - New CLI management commands:
   - `yi config show|set|reset|path`
   - `yi mcp list|install|remove|path`

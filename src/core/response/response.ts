@@ -50,7 +50,7 @@ function buildAskPrompt(
   memoryContext: string,
 ): string {
   return `
-You are YI, a friendly, warm, and natural AI assistant.
+You are Adelie, a friendly, warm, and natural AI assistant.
 
 User request:
 ${userInput}
@@ -97,7 +97,7 @@ function buildAgentPrompt(
   memoryContext: string,
 ): string {
   return `
-You are YI, a friendly, empathetic, and efficient AI assistant.
+You are Adelie, a friendly, empathetic, and efficient AI assistant.
 
 User request:
 ${userInput}
@@ -136,6 +136,31 @@ Instructions:
 - Keep it clear, helpful, and human.
 - Emojis only at the end.
 `;
+}
+
+export async function* generateAskResponse(
+  userInput: string,
+  debug?: boolean,
+): AsyncGenerator<string> {
+  const systemRules = getSystemContextAsRules();
+  const actionsText = buildActionsText();
+  
+  // Load memory context (sync now)
+  const memoryContext = getRelevantMemoryContext(userInput);
+
+  const prompt = buildAskPrompt(userInput, systemRules, actionsText, memoryContext);
+
+  if (debug) {
+    console.log("\n[DEBUG] ASK RESPONSE PROMPT:");
+    console.log(prompt);
+  }
+
+  const config = readAgentConfig();
+  const stream = await callOllama(prompt, config.model, true);
+
+  for await (const chunk of stream as AsyncGenerator<string>) {
+    yield chunk;
+  }
 }
 
 export async function* generateResponse(

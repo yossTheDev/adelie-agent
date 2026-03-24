@@ -16,7 +16,7 @@ type McpConfig = {
   servers: McpServer[];
 };
 
-const CONFIG_DIR = path.join(os.homedir(), ".yi-agente");
+const CONFIG_DIR = path.join(os.homedir(), ".adelie");
 const MCP_CONFIG_PATH = path.join(CONFIG_DIR, "mcp.json");
 
 const ensureMcpConfig = (): void => {

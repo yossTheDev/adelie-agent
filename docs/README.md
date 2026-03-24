@@ -1,4 +1,4 @@
-# YI Agent
+# Adelie
 
 A powerful, deterministic AI agent with Model Context Protocol (MCP) integration, Skills system, and Automatic Memory Management.
 
@@ -50,7 +50,7 @@ A powerful, deterministic AI agent with Model Context Protocol (MCP) integration
 ```bash
 # Clone the repository
 git clone <repository-url>
-cd yi-agent
+cd adelie
 
 # Install dependencies
 npm install
@@ -64,31 +64,37 @@ npm run build
 #### 1. Install MCP Presets
 ```bash
 # Install GitHub integration
-yi mcp install-preset github
+adelie mcp install-preset github
 
 # Install complete toolkit
-yi mcp install-preset complete
+adelie mcp install-preset complete
 ```
 
 #### 2. Use Skills
 ```bash
 # Install a skill
-yi skills install examples/github-search.skill.md
+adelie skills install examples/github-search.skill.md
 
 # List available skills
-yi skills list
+adelie skills list
 
 # Validate all skills
-yi skills validate
+adelie skills validate
 ```
 
 #### 3. Run the Agent
 ```bash
 # Interactive mode
-yi
+adelie
 
 # Direct command
-yi "Find React repositories on GitHub"
+adelie "Find React repositories on GitHub"
+
+# Force ask mode
+adelie --ask "What's the weather like?"
+
+# Force planner mode
+adelie --planner "Create a new project structure"
 ```
 
 ## Documentation
@@ -100,7 +106,7 @@ yi "Find React repositories on GitHub"
 - **[Architecture](docs/architecture.md)**: Core architecture and execution flow
 - **[Planner](docs/planner.md)**: Planner behavior, prompt rules, and determinism strategy
 - **[Executor](docs/executor.md)**: Runtime execution engine, control flow, and context piping
-- **[Configuration](docs/configuration.md)**: User config in `~/.yi-agent/config.json`
+- **[Configuration](docs/configuration.md)**: User config in `~/.adelie/config.json`
 - **[MCP Integration](docs/mcp.md)**: MCP registration, planner exposure, and runtime execution
 - **[Testing](docs/testing.md)**: Plan test suite and fixture strategy
 
@@ -123,17 +129,17 @@ yi "Find React repositories on GitHub"
 ## Configuration
 
 ### Skills Directory
-- **Location**: `~/.yi-agent/skills/`
+- **Location**: `~/.adelie/skills/`
 - **Preset Skills**: `skills/presets/`
 - **Format**: `.skill.md` with structured sections
 
 ### MCP Configuration
-- **Location**: `~/.yi-agent/mcp-config.json`
+- **Location**: `~/.adelie/mcp-config.json`
 - **Presets**: 8 pre-configured presets
 - **Custom**: Skills can embed their own MCP config
 
 ### User Config
-- **Location**: `~/.yi-agent/config.json`
+- **Location**: `~/.adelie/config.json`
 - **Settings**: Model, endpoint, preferences
 - **Dynamic**: Runtime configuration changes
 
