@@ -97,22 +97,51 @@ export const syncMcpServerTools = (
   return target;
 };
 
-export const buildMcpPlannerToolsText = (): string => {
+export const buildMcpPlannerToolsText = async (): Promise<string> => {
   const servers = listMcpServers();
   if (servers.length === 0) return "No MCP servers installed.";
 
+  // Get real tools from MCP servers using SDK
+  const { McpClientManager } = await import("../mcp/mcp-client.js");
   const lines: string[] = [];
+  
   for (const server of servers) {
-    if (!server.tools || server.tools.length === 0) {
-      lines.push(`- ${server.name}: no declared tools`);
-      continue;
-    }
-    for (const tool of server.tools) {
-      lines.push(`- ${server.name}.${tool}`);
+    try {
+      console.log(`🔍 Getting tools from server: ${server.name}`);
+      const tools = await McpClientManager.getServerTools(server.name);
+      
+      if (tools.length > 0) {
+        for (const tool of tools) {
+          const description = tool.description || `Tool from ${server.name} server`;
+          lines.push(`- ${server.name}.${tool.name}: ${description}`);
+        }
+        console.log(`✅ Found ${tools.length} tools for server: ${server.name}`);
+      } else {
+        // Fallback to server's declared tools if no real tools available
+        if (server.tools && server.tools.length > 0) {
+          for (const tool of server.tools) {
+            lines.push(`- ${server.name}.${tool}: Tool from ${server.name} server (declared)`);
+          }
+        } else {
+          lines.push(`- ${server.name}: no tools available`);
+        }
+        console.log(`⚠️ No tools found for server: ${server.name}`);
+      }
+    } catch (error) {
+      console.warn(`Failed to get tools from server '${server.name}':`, error);
+      
+      // Fallback to declared tools
+      if (server.tools && server.tools.length > 0) {
+        for (const tool of server.tools) {
+          lines.push(`- ${server.name}.${tool}: Tool from ${server.name} server (fallback)`);
+        }
+      } else {
+        lines.push(`- ${server.name}: connection failed`);
+      }
     }
   }
 
-  return lines.join("\n");
+  return lines.length > 0 ? lines.join("\n") : "No MCP tools available.";
 };
 
 export const removeMcpServer = (name: string): boolean => {

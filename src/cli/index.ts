@@ -1,6 +1,8 @@
 import readline from "node:readline";
 import ora from "ora";
 import boxen from "boxen";
+import os from "node:os";
+import path from "node:path";
 
 import { runPlan } from "../core/executor/executor.js";
 import { generatePlan } from "../core/planner/planner.js";
@@ -22,8 +24,6 @@ import {
   syncMcpServerTools,
   updateMcpServerEnv,
 } from "../core/config/mcp-config.js";
-import { listMcpTools } from "../core/mcp/mcp-runtime.js";
-import { SkillLoader } from "../core/skills/skill-loader.js";
 import { McpInstaller } from "../core/mcp/mcp-installer.js";
 import { getMemoryStore } from "../core/memory/memory-store.js";
 import { loadAllMemory } from "../core/response/response.js";
@@ -125,13 +125,17 @@ const renderPlan = (steps: any[]): void => {
 const getBanner = async (mode: string = "planner"): Promise<string> => {
   const cfg = readAgentConfig();
   const actionCount = Object.keys(ACTION_ARGS).length;
-  const mcpServers = listMcpServers();
+  const { McpInstaller } = await import("../core/mcp/mcp-installer.js");
+  const mcpServers = await McpInstaller.listInstalledServers();
   const mcpCount = mcpServers.length;
   
-  // Contar herramientas MCP
+  // Contar herramientas MCP (básico, ya que no tenemos herramientas reales aún)
   let mcpToolsCount = 0;
-  for (const server of mcpServers) {
-    mcpToolsCount += server.tools?.length || 0;
+  for (const serverName of mcpServers) {
+    const serverInfo = await McpInstaller.getServerInfo(serverName);
+    if (serverInfo) {
+      mcpToolsCount += 1; // Placeholder hasta tener sync de herramientas real
+    }
   }
 
   // Mode-specific colors and messages
@@ -290,21 +294,22 @@ const handleMcpCommand = async (args: string[]) => {
   const [subcommand, ...rest] = args;
 
   if (!subcommand || subcommand === "list") {
-    const servers = listMcpServers();
+    // Use the new McpInstaller to list servers
+    const servers = await McpInstaller.listInstalledServers();
     console.log("MCP servers:");
     if (servers.length === 0) {
       console.log("No MCP servers installed.");
     } else {
-      for (const s of servers) {
-        console.log(
-          `- ${s.name} -> ${`${s.command} ${s.args.join(" ")}`.trim()}`,
-        );
-        if (s.tools.length > 0) {
-          console.log(`  tools: ${s.tools.join(", ")}`);
+      for (const serverName of servers) {
+        const serverInfo = await McpInstaller.getServerInfo(serverName);
+        if (serverInfo) {
+          console.log(
+            `- ${serverName} -> ${`${serverInfo.command} ${serverInfo.args.join(" ")}`.trim()}`,
+          );
         }
       }
     }
-    console.log(`Path: ${getMcpConfigPath()}`);
+    console.log(`Path: ${path.join(os.homedir(), ".adelie", "mcp-config.json")}`);
     return;
   }
 
@@ -377,21 +382,81 @@ const handleMcpCommand = async (args: string[]) => {
   if (subcommand === "sync-tools") {
     const [name] = rest;
     if (!name) {
-      console.log("Usage: adelie mcp sync-tools <server>");
+      console.log("Usage: yi mcp sync-tools <server>");
       return;
     }
     try {
-      const tools = await listMcpTools(name);
-      const updated = syncMcpServerTools(name, tools);
-      if (!updated) {
-        console.log(`MCP '${name}' was not found.`);
-        return;
+      const result = await McpInstaller.syncTools(name);
+      if (result.success) {
+        console.log(
+          `✅ Synced tools for '${name}': ${result.tools ? result.tools.map(t => t.name).join(", ") || "(none)" : "(none)"}`,
+        );
+      } else {
+        console.error(`❌ Failed to sync tools for '${name}': ${result.error}`);
       }
-      console.log(
-        `Synced ${tools.length} tools for '${name}': ${tools.join(", ") || "(none)"}`,
-      );
     } catch (error) {
-      console.log(`Failed to sync MCP tools: ${String(error)}`);
+      console.error(`❌ Error syncing tools: ${String(error)}`);
+    }
+    return;
+  }
+
+  if (subcommand === "status") {
+    try {
+      const status = await McpInstaller.getConnectionStatus();
+      console.log("🔌 MCP Server Connection Status:");
+      
+      for (const [serverName, isConnected] of Object.entries(status)) {
+        const statusIcon = isConnected ? "✅" : "❌";
+        const statusText = isConnected ? "Connected" : "Disconnected";
+        console.log(`  ${statusIcon} ${serverName}: ${statusText}`);
+      }
+      
+      const connectedCount = Object.values(status).filter(Boolean).length;
+      const totalCount = Object.keys(status).length;
+      
+      console.log(`\n📊 Summary: ${connectedCount}/${totalCount} servers connected`);
+    } catch (error) {
+      console.error(`❌ Error getting connection status: ${String(error)}`);
+    }
+    return;
+  }
+
+  if (subcommand === "disconnect") {
+    try {
+      await McpInstaller.disconnectAll();
+      console.log("🔌 Disconnected from all MCP servers");
+    } catch (error) {
+      console.error(`❌ Error disconnecting: ${String(error)}`);
+    }
+    return;
+  }
+
+  if (subcommand === "test") {
+    const [name] = rest;
+    if (!name) {
+      console.log("Usage: yi mcp test <server>");
+      return;
+    }
+    
+    try {
+      console.log(`🧪 Testing connection to MCP server: ${name}`);
+      const tools = await McpInstaller.syncTools(name);
+      
+      if (tools.success) {
+        console.log(`✅ Connection successful!`);
+        console.log(`📋 Available tools: ${tools.tools ? tools.tools.length : 0}`);
+        
+        if (tools.tools && tools.tools.length > 0) {
+          console.log("\nAvailable tools:");
+          tools.tools.forEach(tool => {
+            console.log(`  • ${tool.name}: ${tool.description || "No description"}`);
+          });
+        }
+      } else {
+        console.log(`❌ Connection failed: ${tools.error}`);
+      }
+    } catch (error) {
+      console.error(`❌ Error testing connection: ${String(error)}`);
     }
     return;
   }
@@ -402,17 +467,21 @@ const handleMcpCommand = async (args: string[]) => {
       console.log("Usage: adelie mcp remove <name>");
       return;
     }
-    const removed = removeMcpServer(name);
-    console.log(
-      removed
-        ? `Removed MCP '${name}'.`
-        : `MCP '${name}' was not found.`,
-    );
+    try {
+      const result = await McpInstaller.removeServer(name);
+      if (result.success) {
+        console.log(`Removed MCP '${name}'.`);
+      } else {
+        console.log(`Failed to remove: ${result.error}`);
+      }
+    } catch (error) {
+      console.log(`Error removing MCP: ${String(error)}`);
+    }
     return;
   }
 
   if (subcommand === "path") {
-    console.log(getMcpConfigPath());
+    console.log(path.join(os.homedir(), ".adelie", "mcp-config.json"));
     return;
   }
 
@@ -421,6 +490,7 @@ const handleMcpCommand = async (args: string[]) => {
 
 const handleSkillsCommand = async (args: string[]) => {
   const [subcommand, ...rest] = args;
+  const { SkillLoader } = await import("../core/skills/skill-loader.js");
 
   if (!subcommand || subcommand === "list") {
     await SkillLoader.loadAllSkills();
@@ -448,7 +518,10 @@ const handleSkillsCommand = async (args: string[]) => {
   if (subcommand === "install") {
     const [filePath] = rest;
     if (!filePath) {
-      console.log("Usage: adelie skills install <file.skill.md>");
+      console.log("Usage: adelie skills install <file.skill.md|url>");
+      console.log("Examples:");
+      console.log("  adelie skills install ./my-skill.skill.md");
+      console.log("  adelie skills install https://raw.githubusercontent.com/user/repo/main/skill.skill.md");
       return;
     }
 

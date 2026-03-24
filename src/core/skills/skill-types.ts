@@ -1,15 +1,33 @@
 export interface SkillInput {
   name: string;
   description: string;
+  type?: string;
+  required?: boolean;
+}
+
+export interface McpToolDefinition {
+  name: string;
+  description: string;
+  inputSchema?: {
+    type: string;
+    properties?: Record<string, any>;
+    required?: string[];
+  };
+  usage?: string;
+  examples?: Array<{
+    input: any;
+    description: string;
+  }>;
 }
 
 export interface McpServerConfig {
   name: string;
   command: string;
   args: string[];
-  tools?: string[];
+  tools?: McpToolDefinition[] | string[];
   env?: Record<string, string>;
   package?: string;
+  description?: string;
 }
 
 export interface Skill {
@@ -22,6 +40,10 @@ export interface Skill {
   expectedBehavior: string;
   mcpServer?: string;
   mcpServerConfig?: McpServerConfig;
+  mcpTools?: McpToolDefinition[];
+  version?: string;
+  author?: string;
+  tags?: string[];
 }
 
 export interface SkillParseResult {

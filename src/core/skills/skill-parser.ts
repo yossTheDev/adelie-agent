@@ -1,6 +1,6 @@
 import fs from "node:fs";
 import path from "node:path";
-import type { Skill, SkillParseResult, SkillInput, McpServerConfig } from "./skill-types.js";
+import type { Skill, SkillParseResult, SkillInput, McpServerConfig, McpToolDefinition } from "./skill-types.js";
 
 export class SkillParser {
   private static readonly REQUIRED_SECTIONS = [
@@ -13,7 +13,11 @@ export class SkillParser {
   ];
 
   private static readonly OPTIONAL_SECTIONS = [
-    "MCP Server Config"
+    "MCP Server Config",
+    "MCP Tools",
+    "Version",
+    "Author",
+    "Tags"
   ];
 
   static parseSkillFile(filePath: string): SkillParseResult {
@@ -80,7 +84,11 @@ export class SkillParser {
         example: sections["Example"].join("\n"),
         expectedBehavior: sections["Expected behavior"].join(" "),
         mcpServer: this.extractMcpServer(sections["Plan Template"]),
-        mcpServerConfig: sections["MCP Server Config"] ? this.parseMcpServerConfig(sections["MCP Server Config"]) : undefined
+        mcpServerConfig: sections["MCP Server Config"] ? this.parseMcpServerConfig(sections["MCP Server Config"]) : undefined,
+        mcpTools: sections["MCP Tools"] ? this.parseMcpTools(sections["MCP Tools"]) : undefined,
+        version: sections["Version"] ? sections["Version"][0] : undefined,
+        author: sections["Author"] ? sections["Author"][0] : undefined,
+        tags: sections["Tags"] ? this.parseTags(sections["Tags"]) : undefined
       };
 
       return {
@@ -107,10 +115,24 @@ export class SkillParser {
     for (const line of inputLines) {
       const match = line.match(/^-\s*([^:]+):\s*(.+)$/);
       if (match) {
-        inputs.push({
-          name: match[1].trim(),
-          description: match[2].trim()
-        });
+        const [_, name, description] = match;
+        const input: SkillInput = {
+          name: name.trim(),
+          description: description.trim()
+        };
+        
+        // Parse optional type and required from description
+        const typeMatch = description.match(/\(type:\s*([^)]+)\)/);
+        const requiredMatch = description.match(/\(required\)/);
+        
+        if (typeMatch) {
+          input.type = typeMatch[1].trim();
+        }
+        if (requiredMatch) {
+          input.required = true;
+        }
+        
+        inputs.push(input);
       }
     }
     
@@ -224,5 +246,77 @@ export class SkillParser {
       valid: errors.length === 0,
       errors
     };
+  }
+
+  private static parseMcpTools(toolLines: string[]): McpToolDefinition[] {
+    const tools: McpToolDefinition[] = [];
+    let currentTool: Partial<McpToolDefinition> | null = null;
+    let currentSection = "";
+    
+    for (const line of toolLines) {
+      const trimmedLine = line.trim();
+      
+      // Detect tool header
+      if (trimmedLine.startsWith("###")) {
+        if (currentTool && currentTool.name) {
+          tools.push(currentTool as McpToolDefinition);
+        }
+        currentTool = {
+          name: trimmedLine.replace("###", "").trim(),
+          description: "",
+          usage: "",
+          examples: []
+        };
+        currentSection = "description";
+        continue;
+      }
+      
+      // Detect section within tool
+      if (trimmedLine.startsWith("**") && trimmedLine.endsWith("**")) {
+        currentSection = trimmedLine.replace(/\*\*/g, "").toLowerCase();
+        continue;
+      }
+      
+      // Add content to current section
+      if (currentTool && trimmedLine) {
+        switch (currentSection) {
+          case "description":
+            currentTool.description = (currentTool.description || "") + trimmedLine + " ";
+            break;
+          case "usage":
+            currentTool.usage = (currentTool.usage || "") + trimmedLine + " ";
+            break;
+          case "input schema":
+            if (trimmedLine.startsWith("```json")) {
+              // Skip schema parsing for now
+              currentSection = "schema_content";
+            }
+            break;
+          case "examples":
+            // Parse examples
+            if (trimmedLine.startsWith("-")) {
+              const exampleMatch = trimmedLine.match(/^-\s*(.+?):\s*(.+)$/);
+              if (exampleMatch && currentTool.examples) {
+                currentTool.examples.push({
+                  input: exampleMatch[1].trim(),
+                  description: exampleMatch[2].trim()
+                });
+              }
+            }
+            break;
+        }
+      }
+    }
+    
+    // Add last tool
+    if (currentTool && currentTool.name) {
+      tools.push(currentTool as McpToolDefinition);
+    }
+    
+    return tools;
+  }
+
+  private static parseTags(tagLines: string[]): string[] {
+    return this.parseListItems(tagLines);
   }
 }

@@ -8,7 +8,7 @@ export const MCP_PRESETS: Record<string, McpPreset> = {
       {
         name: "github",
         command: "npx",
-        args: ["-y", "@modelcontextprotocol/server-github"],
+        args: ["-y", "@github/github-mcp-server"],
         env: {
           GITHUB_PERSONAL_ACCESS_TOKEN: "${GITHUB_TOKEN}"
         }
@@ -114,7 +114,7 @@ export const MCP_PRESETS: Record<string, McpPreset> = {
       {
         name: "github",
         command: "npx",
-        args: ["-y", "@modelcontextprotocol/server-github"],
+        args: ["-y", "@github/github-mcp-server"],
         env: {
           GITHUB_PERSONAL_ACCESS_TOKEN: "${GITHUB_TOKEN}"
         }

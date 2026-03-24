@@ -61,7 +61,18 @@ Traditional agents rely on large models to handle complex reasoning in a single 
 - `src/core/response` - final user-facing response generation
 - `src/cli` - interactive TUI and management commands
 
-See detailed documentation in the [`docs/`](docs/) directory with numbered guides.
+See detailed documentation in the [`docs/`](docs/) directory with numbered guides:
+
+- **01-architecture.md** - System architecture overview
+- **02-configuration.md** - Configuration management
+- **03-planner.md** - Planning system details
+- **04-executor.md** - Execution engine
+- **05-mcp.md** - MCP integration and presets
+- **06-testing.md** - Testing framework
+- **07-memory-system.md** - Memory management
+- **08-skills-mcp-guide.md** - Skills and MCP integration
+- **09-mcp-config-in-skills.md** - MCP configuration in skills
+- **10-creating-skills.md** - Creating custom skills
 
 ## Installation
 
@@ -155,20 +166,30 @@ adelie config set max_loop_iterations 200
 adelie config path
 ```
 
-### MCP Servers
+### MCP Servers & Presets
 
 ```bash
-adelie mcp install myserver my-command --tools=search,fetch
-adelie mcp install-preset github
-adelie mcp set-env github GITHUB_TOKEN <token>
-adelie mcp sync-tools github
+# Install MCP presets (includes server + skills)
+adelie install-preset github
+adelie install-preset web-search
+adelie install-preset complete
+
+# MCP server management
 adelie mcp list
 adelie mcp remove myserver
-adelie mcp path
+adelie mcp set-env github GITHUB_TOKEN <token>
+
+# MCP connection management
+adelie mcp status          # Check connection status
+adelie mcp test github     # Test connection and list tools
+adelie mcp disconnect      # Disconnect all servers
 ```
 
-Planner exposure of MCP tools is automatic from installed MCP registry entries.
-For live tool discovery from an MCP server, run `mcp sync-tools <server>`.
+**Key Features:**
+- **Real Tool Discovery**: Uses `@modelcontextprotocol/sdk` to get actual tools from servers
+- **Auto-sync**: Tools are automatically synchronized when installing presets
+- **Connection Management**: Real-time connection status and testing
+- **Fallback Support**: Graceful fallback to declared tools if server is unavailable
 
 ### Skills
 
@@ -178,6 +199,11 @@ adelie skills install file.skill.md
 adelie skills remove skill-name
 adelie skills validate
 ```
+
+**Skills Integration:**
+- Skills are automatically installed with MCP presets
+- Templates expand into executable plans with `USE_SKILL` action
+- MCP tools from skills are automatically discovered and synchronized
 
 ### Memory Management
 

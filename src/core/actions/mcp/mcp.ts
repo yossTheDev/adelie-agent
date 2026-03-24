@@ -2,7 +2,7 @@ import type { ActionResult } from "../../../types/action-result.js";
 import { McpInstaller } from "../../mcp/mcp-installer.js";
 
 /**
- * Executes a tool from an MCP server
+ * Executes a tool from an MCP server using the SDK
  */
 export const mcpRun = async (args: {
   server: string;
@@ -20,28 +20,25 @@ export const mcpRun = async (args: {
       return [false, `MCP server '${args.server}' is not installed. Use 'yi mcp install ${args.server}' first.`];
     }
 
-    // Get server configuration
-    const serverInfo = await McpInstaller.getServerInfo(args.server);
-    if (!serverInfo) {
-      return [false, `Failed to get configuration for MCP server '${args.server}'`];
+    // Execute tool using SDK
+    const result = await McpInstaller.executeTool(args.server, args.tool, args.input);
+    
+    if (!result.success) {
+      return [false, result.error || "Failed to execute MCP tool"];
     }
 
-    // For now, return a placeholder response
-    // In a full implementation, this would:
-    // 1. Connect to the MCP server
-    // 2. Call the specified tool with the given input
-    // 3. Return the tool's response
+    // Format the result
+    let output = `MCP Tool Execution:\n`;
+    output += `Server: ${args.server}\n`;
+    output += `Tool: ${args.tool}\n`;
     
-    const inputJson = args.input ? JSON.stringify(args.input, null, 2) : "{}";
+    if (args.input) {
+      output += `Input: ${JSON.stringify(args.input, null, 2)}\n`;
+    }
     
-    return [
-      true, 
-      `MCP execution simulated:\n` +
-      `Server: ${args.server}\n` +
-      `Tool: ${args.tool}\n` +
-      `Input: ${inputJson}\n` +
-      `Note: Full MCP execution not yet implemented`
-    ];
+    output += `Result: ${JSON.stringify(result.result, null, 2)}`;
+    
+    return [true, output];
   } catch (error) {
     return [false, `MCP_RUN Error: ${String(error)}`];
   }

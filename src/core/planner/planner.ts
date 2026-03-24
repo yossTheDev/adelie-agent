@@ -1,9 +1,10 @@
 import { ACTION_ARGS, ACTION_DESCRIPTIONS } from "../actions/actions.js";
-import { buildMcpPlannerToolsText } from "../config/mcp-config.js";
+import { McpInstaller } from "../mcp/mcp-installer.js";
 import { callOllama } from "../llm/llm.js";
 import { getPlannerPromt } from "./prompt.js";
 import { SkillLoader } from "../skills/skill-loader.js";
 import { getMemoryStore } from "../memory/memory-store.js";
+import { buildMcpPlannerToolsText } from "../config/mcp-config.js";
 
 function formatPlannerMemoryValueWithInstruction(key: string, value: any, source?: string, instruction?: string): string {
   const sourceInfo = source ? ` (source: ${source})` : "";
@@ -223,7 +224,9 @@ export async function generatePlan(
   });
 
   const actionsText = actionsInfo.join("\n");
-  const mcpToolsText = buildMcpPlannerToolsText();
+  
+  // Build MCP tools text using unified config system
+  const mcpToolsText = await buildMcpPlannerToolsText();
 
   // --- PHASE 1: GENERATION PROMPT ---
   const basePrompt = getPlannerPromt({ actionsText, mcpToolsText, skillsText, userInput, memoryContext });

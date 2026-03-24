@@ -1,6 +1,9 @@
 import fs from "node:fs";
 import path from "node:path";
 import os from "node:os";
+import https from "node:https";
+import http from "node:http";
+import { URL } from "node:url";
 import type { Skill, SkillParseResult } from "./skill-types.js";
 import { SkillParser } from "./skill-parser.js";
 import { McpInstaller } from "../mcp/mcp-installer.js";
@@ -63,38 +66,47 @@ export class SkillLoader {
     return result;
   }
 
-  static async installSkillFile(sourcePath: string): Promise<{ success: boolean; error?: string }> {
+  static async installSkillFile(filePath: string): Promise<{ success: boolean; error?: string }> {
     try {
-      const result = this.loadSkillFile(sourcePath);
-      
-      if (!result.success) {
-        return { success: false, error: result.error };
-      }
-
-      if (!result.skill) {
-        return { success: false, error: "No skill data found" };
-      }
-
       this.ensureSkillsDirectory();
       
+      // Check if it's a URL
+      if (filePath.startsWith('http://') || filePath.startsWith('https://')) {
+        return await this.installSkillFromUrl(filePath);
+      }
+      
+      // Local file installation
+      if (!fs.existsSync(filePath)) {
+        return { success: false, error: `File not found: ${filePath}` };
+      }
+
+      const result = SkillParser.parseSkillFile(filePath);
+      
+      if (!result.success || !result.skill) {
+        return { success: false, error: result.error || "Failed to parse skill file" };
+      }
+
+      // Validate skill
+      const validation = SkillParser.validateSkill(result.skill);
+      if (!validation.valid) {
+        return { success: false, error: `Validation failed: ${validation.errors.join(", ")}` };
+      }
+
+      // Install MCP server if needed
+      if (result.skill.mcpServerConfig) {
+        const serverResult = await McpInstaller.installServer(result.skill.mcpServerConfig);
+        if (!serverResult.success) {
+          return { success: false, error: `Failed to install MCP server: ${serverResult.error}` };
+        }
+        
+        // Sync tools for the server
+        await McpInstaller.syncTools(result.skill.mcpServerConfig.name);
+      }
+      
+      // Copy skill file to skills directory
       const fileName = `${result.skill.name}.skill.md`;
       const destPath = path.join(this.SKILLS_DIR, fileName);
-
-      // Check if skill already exists
-      if (fs.existsSync(destPath)) {
-        return { success: false, error: `Skill '${result.skill.name}' already exists` };
-      }
-
-      // Copy the skill file
-      fs.copyFileSync(sourcePath, destPath);
-      
-      // Install required MCP servers
-      const mcpResult = await this.installMcpDependencies(result.skill);
-      if (!mcpResult.success) {
-        // Clean up the skill file if MCP installation failed
-        fs.unlinkSync(destPath);
-        return { success: false, error: mcpResult.error };
-      }
+      fs.copyFileSync(filePath, destPath);
       
       // Add to cache
       this.skills.set(result.skill.name, result.skill);
@@ -103,6 +115,74 @@ export class SkillLoader {
     } catch (error) {
       return { success: false, error: `Failed to install skill: ${String(error)}` };
     }
+  }
+
+  private static async installSkillFromUrl(url: string): Promise<{ success: boolean; error?: string }> {
+    try {
+      const content = await this.fetchUrlContent(url);
+      if (!content) {
+        return { success: false, error: `Failed to fetch content from URL: ${url}` };
+      }
+
+      // Parse skill to get name
+      const parseResult = SkillParser.parseSkillContent(content);
+      if (!parseResult.success || !parseResult.skill) {
+        return { success: false, error: `Failed to parse skill from URL: ${parseResult.error}` };
+      }
+
+      // Validate skill
+      const validation = SkillParser.validateSkill(parseResult.skill);
+      if (!validation.valid) {
+        return { success: false, error: `Validation failed: ${validation.errors.join(", ")}` };
+      }
+
+      // Install MCP server if needed
+      if (parseResult.skill.mcpServerConfig) {
+        const serverResult = await McpInstaller.installServer(parseResult.skill.mcpServerConfig);
+        if (!serverResult.success) {
+          return { success: false, error: `Failed to install MCP server: ${serverResult.error}` };
+        }
+        
+        // Sync tools for the server
+        await McpInstaller.syncTools(parseResult.skill.mcpServerConfig.name);
+      }
+      
+      // Save skill file to skills directory
+      const fileName = `${parseResult.skill.name}.skill.md`;
+      const destPath = path.join(this.SKILLS_DIR, fileName);
+      fs.writeFileSync(destPath, content, 'utf-8');
+      
+      // Add to cache
+      this.skills.set(parseResult.skill.name, parseResult.skill);
+
+      return { success: true };
+    } catch (error) {
+      return { success: false, error: `Failed to install skill from URL: ${String(error)}` };
+    }
+  }
+
+  private static async fetchUrlContent(url: string): Promise<string | null> {
+    return new Promise((resolve) => {
+      const client = url.startsWith('https:') ? https : http;
+      
+      client.get(url, (res) => {
+        if (res.statusCode !== 200) {
+          resolve(null);
+          return;
+        }
+
+        let data = '';
+        res.on('data', (chunk) => {
+          data += chunk;
+        });
+
+        res.on('end', () => {
+          resolve(data);
+        });
+      }).on('error', () => {
+        resolve(null);
+      });
+    });
   }
 
   static async removeSkill(skillName: string): Promise<{ success: boolean; error?: string }> {
