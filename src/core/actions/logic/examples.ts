@@ -47,7 +47,7 @@ User: execute actions for each file in ./data
 User: create numbered files using FOR_EACH with a single template object
 {
   "plan": [
-    {"id": "mk1", "action": "MAKE_DIRECTORY", "args": {"path": "C:\\\\Users\\\\yoann\\\\Documents"}},
+    {"id": "mk1", "action": "MAKE_DIRECTORY", "args": {"path": "C:\\\\Users\\\\Documents"}},
     {
       "id": "loop1",
       "action": "FOR_EACH",
@@ -57,7 +57,7 @@ User: create numbered files using FOR_EACH with a single template object
           "id": "create_$$item",
           "action": "CREATE_FILE",
           "args": {
-            "path": "C:\\\\Users\\\\yoann\\\\Documents\\\\text-$$item.txt",
+            "path": "C:\\\\Users\\\\Documents\\\\text-$$item.txt",
             "content": "This is text file number $$item."
           }
         }
