@@ -55,7 +55,10 @@ export const mcpRun = async (args: {
     if (!server) return [false, `MCP server '${serverName}' not found`];
 
     if (server.tools.length > 0 && !server.tools.includes(toolName)) {
-      return [false, `Tool '${toolName}' not registered for MCP server '${serverName}'`];
+      return [
+        false,
+        `Tool '${toolName}' not registered for MCP server '${serverName}'`,
+      ];
     }
 
     const response = await callMcpTool({
