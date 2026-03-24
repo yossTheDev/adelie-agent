@@ -2,24 +2,24 @@
 
 ## Overview
 
-The Adelie Agent now includes a powerful Skills and MCP (Model Context Protocol) integration system that allows users to install predefined capabilities and enhance the agent's functionality.
+The Adelie Agent includes a powerful Skills and MCP (Model Context Protocol) integration system that allows users to install predefined capabilities and enhance the agent's functionality with **real tool discovery using `@modelcontextprotocol/sdk`**.
 
 ## Quick Start
 
-### 1. Install MCP Presets
+### 1. Install MCP Presets (Recommended)
 
 ```bash
 # Install GitHub integration
-adelie mcp install-preset github
+adelie install-preset github
 
 # Install web search capabilities
-adelie mcp install-preset web-search
+adelie install-preset web-search
 
 # Install complete preset (all common tools)
-adelie mcp install-preset complete
+adelie install-preset complete
 ```
 
-### 2. Install Skills
+### 2. Install Individual Skills
 
 ```bash
 # Install a skill file
@@ -28,195 +28,144 @@ adelie skills install examples/github-search.skill.md
 # List installed skills
 adelie skills list
 
-# Validate all skills
-adelie skills validate
+# Validate skill syntax
+adelie skills validate my-skill.skill.md
 ```
 
-### 3. Use Skills in Agent
+## System Architecture
 
-Once skills are installed, the planner will automatically detect when to use them based on your input:
+### Skills Directory Structure
+- **`skills/`** - Main skills directory (GitHub skill lives here)
+- **`skills/presets/`** - Additional preset skills
+- **`~/.adelie/skills/`** - User-installed skills
+- **`~/.adelie/mcp.json`** - Unified MCP configuration
 
-```
-User: Find TypeScript frameworks on GitHub
-# Agent will automatically use the github-search skill
+### MCP Integration with SDK
+- **🔄 Real Tool Discovery**: Uses `@modelcontextprotocol/sdk` to connect to actual MCP servers
+- **🔌 Auto-sync**: Tools automatically synchronized when installing presets
+- **📊 Connection Management**: Real-time status monitoring and testing
+- **🛡️ Robust Fallbacks**: Falls back to declared tools if servers are unavailable
 
-User: Search for quantum computing advances and summarize
-# Agent will use web-search-and-summarize skill
-```
+## Available Presets
 
-## Available MCP Presets
+| Preset | Description | MCP Servers | Skills |
+|---------|-------------|--------------|--------|
+| `github` | GitHub integration | github | github-search |
+| `web-search` | Web search & content fetching | brave-search, fetch | web-search |
+| `docs` | Technical documentation retrieval | puppeteer | docs-retrieval |
+| `file-index` | Semantic and local file search | filesystem, sqlite | file-index |
+| `database` | Database connectivity | sqlite, postgres | database-query |
+| `pdf` | PDF document parsing | pdf-reader | pdf-analysis |
+| `shell-system` | System operations | sequential-thinking | shell-commands |
+| `complete` | All common tools | All servers | All skills |
 
-| Preset | Description | Tools Included |
-|---------|-------------|----------------|
-| `github` | GitHub repository search and access | GitHub API |
-| `web-search` | Web search and content fetching | Brave Search, Fetch |
-| `docs` | Technical documentation retrieval | Puppeteer |
-| `file-index` | Local file search and semantic search | Filesystem, SQLite |
-| `database` | Database connectivity | SQLite, PostgreSQL |
-| `pdf` | PDF document parsing | PDF Reader |
-| `shell-system` | Controlled command execution | Sequential Thinking |
-| `complete` | All common tools | All above |
+## CLI Commands
 
-## Creating Custom Skills
-
-### Skill File Structure
-
-Create `.skill.md` files with this strict format:
-
-```markdown
-# Skill: <skill-name>
-
-## Description
-<short explanation of what the skill does>
-
-## When to use
-- <condition 1>
-- <condition 2>
-- <condition 3>
-
-## Inputs
-- input_name: description of the input parameter
-
-## Plan Template
-```json
-[
-  {
-    "action": "ACTION_NAME",
-    "args": {
-      "parameter": "$$input.input_name"
-    }
-  }
-]
-```
-
-## Example
-User: <example user input>
-
-## Expected behavior
-<description of what should happen>
-```
-
-### Skill Template Variables
-
-Use `$$input.param_name` to reference input parameters in your template:
-
-```json
-{
-  "action": "MCP_RUN",
-  "args": {
-    "server": "github",
-    "tool": "search_repositories",
-    "input": {
-      "query": "$$input.query"
-    }
-  }
-}
-```
-
-### MCP Integration
-
-If your skill uses MCP tools, the system will automatically:
-
-1. Detect MCP servers referenced in the template
-2. Install required MCP servers if not already installed
-3. Make the skill available for use
-
-Example MCP action:
-```json
-{
-  "action": "MCP_RUN",
-  "args": {
-    "server": "github",
-    "tool": "search_repositories",
-    "input": {
-      "query": "$$input.query",
-      "limit": 10
-    }
-  }
-}
-```
-
-## Advanced Features
-
-### Embedded MCP Server Configuration
-
-Skills can include their own MCP server configuration using the `## MCP Server Config` section:
-
-```markdown
-## MCP Server Config
-```json
-{
-  "name": "custom-server-name",
-  "command": "npx",
-  "args": ["-y", "@modelcontextprotocol/server-github"],
-  "tools": ["search_repositories", "get_file_contents"],
-  "env": {
-    "GITHUB_TOKEN": ""
-  },
-  "package": "@modelcontextprotocol/server-github"
-}
-```
-
-When a skill includes this configuration, the system will use this specific MCP server configuration instead of installing a preset.
-
-## CLI Commands Reference
-
-### MCP Management
-
+### Preset Management
 ```bash
-# List available presets
-adelie mcp install-preset
-
-# Install a preset
-adelie mcp install-preset <preset-name>
-
-# List installed MCP servers
-adelie mcp list
-
-# Remove an MCP server
-adelie mcp remove <server-name>
-
-# Set environment variables
-adelie mcp set-env <server> <KEY> <value>
+adelie install-preset <name>    # Install preset with server + skills
+adelie mcp list                 # List installed MCP servers
+adelie mcp remove <name>        # Remove MCP server
 ```
 
 ### Skills Management
-
 ```bash
-# List installed skills
+adelie skills list              # List installed skills
+adelie skills install <file>     # Install skill file
+adelie skills remove <name>      # Remove skill
+adelie skills validate <file>    # Validate skill syntax
+```
+
+### Connection Management (NEW!)
+```bash
+adelie mcp status              # Check connection status
+adelie mcp test <server>       # Test connection and list tools
+adelie mcp disconnect           # Disconnect all servers
+```
+
+### Environment Configuration
+```bash
+adelie mcp set-env <server> <key> <value>  # Set environment variables
+```
+
+## Real Tool Discovery Process
+
+1. **Preset Installation**: `adelie install-preset github` installs server + skill
+2. **Server Connection**: System connects to MCP server using SDK stdio transport
+3. **Tool Discovery**: `client.listTools()` gets actual available tools from running server
+4. **Auto-sync**: Tools synchronized with configuration automatically
+5. **Planner Integration**: Real tools exposed to planner for use in plans
+
+## Usage Examples
+
+### Using GitHub Preset
+```bash
+# Install GitHub preset
+adelie install-preset github
+
+# Set token
+adelie mcp set-env github GITHUB_TOKEN your_token
+
+# Test connection
+adelie mcp test github
+
+# Use in conversation
+"Search for TypeScript repositories with over 1000 stars"
+```
+
+### Creating Custom Skills
+See **[10-creating-skills.md](10-creating-skills.md)** for complete guide on creating custom skills with MCP integration.
+
+## Key Features
+
+- **🔄 Auto-sync**: Tools synchronized automatically when installing presets
+- **🔌 Real connections**: Uses SDK to connect to actual MCP servers
+- **🛡️ Robust fallbacks**: Graceful degradation when servers are unavailable
+- **📊 Status monitoring**: Real-time connection status and testing
+- **🎯 Template expansion**: Skills expand into executable plans automatically
+- **🔧 Environment management**: Secure environment variable handling
+
+## File Locations
+
+- **Skills Directory**: `~/.adelie/skills/`
+- **MCP Config**: `~/.adelie/mcp.json`
+- **Examples**: `examples/*.skill.md`
+
+## Troubleshooting
+
+### Common Issues
+
+**Server not connecting:**
+```bash
+# Check connection status
+adelie mcp status
+
+# Test specific server
+adelie mcp test github
+
+# Verify environment variables
+adelie mcp list
+```
+
+**Skills not found:**
+```bash
+# Verify skill installation
 adelie skills list
 
-# Install a skill
-adelie skills install <path/to/skill.skill.md>
-
-# Remove a skill
-adelie skills remove <skill-name>
-
-# Validate all skills
-adelie skills validate
+# Validate skill syntax
+adelie skills validate my-skill.skill.md
 ```
 
-## Example Skills
-
-### GitHub Search
+**Tools not available:**
 ```bash
-adelie skills install examples/github-search.skill.md
-```
-Usage: "Find React repositories on GitHub"
+# Force tool sync
+adelie mcp test github
 
-### Web Search & Summarize
-```bash
-adelie skills install examples/web-search-and-summarize.skill.md
+# Check if server is running
+ps aux | grep github-mcp-server
 ```
-Usage: "Search for AI news and summarize the findings"
 
-### File Analyzer
-```bash
-adelie skills install examples/file-analyzer.skill.md
-```
-Usage: "Analyze all TypeScript files in the src directory"
-
-## Environment Variables
+### Environment Variables
 
 Some MCP servers require environment variables:
 
@@ -229,32 +178,4 @@ Set them with:
 adelie mcp set-env github GITHUB_TOKEN your_token_here
 ```
 
-## File Locations
-
-- **Skills Directory**: `~/.adelie/skills/`
-- **MCP Config**: `~/.adelie/mcp-config.json`
-
-## Troubleshooting
-
-### Skill Installation Fails
-1. Check skill file format with `adelie skills validate`
-2. Ensure all required sections are present
-3. Verify JSON template is valid
-
-### MCP Server Issues
-1. Check if server is installed: `adelie mcp list`
-2. Verify environment variables are set
-3. Check server logs for errors
-
-### Skill Not Working
-1. Verify MCP dependencies are installed
-2. Check skill template syntax
-3. Test with simple inputs first
-
-## Advanced Features
-
-### Skill Composition
-Skills can reference other skills in their templates, enabling complex workflows.
-
-### Dynamic MCP Detection
-The system automatically detects MCP servers from skill templates and installs dependencies.
+This system provides maximum flexibility for creating specialized skills with completely customized MCP configurations while maintaining robust real tool discovery.
