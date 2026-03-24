@@ -5,6 +5,28 @@ import { callOllama } from "../llm/llm.js";
 import { getMemoryStore } from "../memory/memory-store.js";
 import type { ExecutionSummary } from "./types.js";
 
+function formatMemoryValue(key: string, value: any, source?: string): string {
+  const timestamp = new Date().toISOString();
+  const sourceInfo = source ? ` (source: ${source})` : "";
+  
+  if (typeof value === 'string') {
+    return `📝 ${key}: "${value}"${sourceInfo}`;
+  } else if (typeof value === 'object' && value !== null) {
+    if (Array.isArray(value)) {
+      return `📋 ${key}: [${value.map(item => JSON.stringify(item)).join(', ')}]${sourceInfo}`;
+    } else {
+      const objStr = JSON.stringify(value, null, 2);
+      return `🗂️ ${key}: ${objStr}${sourceInfo}`;
+    }
+  } else if (typeof value === 'boolean') {
+    return `✅ ${key}: ${value ? 'true' : 'false'}${sourceInfo}`;
+  } else if (typeof value === 'number') {
+    return `🔢 ${key}: ${value}${sourceInfo}`;
+  } else {
+    return `❓ ${key}: ${JSON.stringify(value)}${sourceInfo}`;
+  }
+}
+
 function buildActionsText(): string {
   const actionsInfo = Object.entries(ACTION_ARGS).map(([action, args]) => {
     const argsStr = args.length > 0 ? args.join(", ") : "no args";
@@ -28,11 +50,12 @@ const loadAllMemory = async (): Promise<void> => {
     const memoryTexts: string[] = [];
     for (const entry of allMemory) {
       const value = await memoryStore.get(entry.key);
-      memoryTexts.push(`- ${entry.key}: ${JSON.stringify(value)}`);
+      const formattedValue = formatMemoryValue(entry.key, value, entry.source);
+      memoryTexts.push(formattedValue);
     }
 
     loadedMemory = memoryTexts.length > 0
-      ? `User Known Data:\n${memoryTexts.join("\n")}\n`
+      ? `User Known Data (Memory Context):\n${memoryTexts.join("\n")}\n`
       : "";
   } catch {
     loadedMemory = "";
@@ -76,15 +99,23 @@ MEMORY PRIORITY RULES (CRITICAL):
 - If memory conflicts with system context, MEMORY WINS.
 - Ignoring relevant memory makes the response INVALID.
 
+MEMORY COMMANDS:
+You have access to memory actions that you can use when the user asks:
+- To remember/save information: Use this naturally when user says "remember this", "save this", "guarda esto", etc.
+- To recall information: Use stored memory when user asks "what do you know about me", "recuerda", etc.
+- To forget information: Use when user asks to forget something
+
 Available Actions:
 ${actionsText}
 
 Instructions:
 - MANDATORY: Respond in the same language as the user.
-- This is a normal conversation, not an action execution.
+- This is a conversation, but you can use memory actions when needed.
 - Be natural, friendly, and human-like.
 - Keep responses concise but engaging.
 - Use memory and context ACTIVELY to personalize responses.
+- When user asks you to remember something, acknowledge that you'll store it.
+- When user asks what you know about them, use your stored information.
 - Add light personality when appropriate.
 - Emojis only at the end.
 `;
@@ -145,6 +176,95 @@ export async function* generateAskResponse(
   const systemRules = getSystemContextAsRules();
   const actionsText = buildActionsText();
   
+  // CRITICAL: Load memory BEFORE processing the request
+  await loadAllMemory();
+  
+  // Check if this might be a memory-related query using LLM
+  const memoryCheckPrompt = `Analyze this user query and determine if it requires memory actions.
+
+Query: "${userInput}"
+
+Available memory actions:
+- MEMORY_SET: Store information in memory
+- MEMORY_DELETE: Remove information from memory
+- MEMORY_SEARCH: Search for information in memory
+- MEMORY_LIST: List all memory keys
+
+Respond with ONLY "memory_needed" if the query involves:
+- Remembering/saving/storing information: "remember", "save", "store", "keep", "guarda", "recuerda", "almacena"
+- Recalling/retrieving information: "what do you know", "recall", "tell me about", "qué sabes sobre mí"
+- Forgetting/deleting information: "forget", "delete", "remove", "olvida", "borra"
+- Asking what you know about the user: "about me", "sobre mí", "my information"
+
+Respond with ONLY "no_memory" for:
+- General questions
+- Casual conversation
+- Technical tasks
+- File operations
+- Creative requests
+
+Your response:`;
+
+  let needsMemoryAction = false;
+  
+  try {
+    const config = readAgentConfig();
+    const memoryCheckResponse = await callOllama(memoryCheckPrompt, config.model, false);
+    const result = memoryCheckResponse.toString().trim().toLowerCase();
+    needsMemoryAction = result.includes("memory_needed");
+  } catch {
+    // If LLM check fails, continue with normal flow
+  }
+
+  if (needsMemoryAction) {
+    // Generate a small memory plan
+    const memoryPlanPrompt = `Create a simple memory plan for this user request:
+
+Query: "${userInput}"
+
+Available actions:
+- MEMORY_SET: Store information (key, value, source?, instruction?)
+- MEMORY_DELETE: Remove information (key)
+- MEMORY_SEARCH: Search information (query)
+- MEMORY_LIST: List all keys ()
+
+Respond with ONLY a JSON array of steps. Each step should have:
+- id: unique step name
+- action: one of the available actions
+- args: object with action parameters
+
+Examples:
+[{"id": "store_name", "action": "MEMORY_SET", "args": {"key": "user_name", "value": "John"}}]
+[{"id": "search_info", "action": "MEMORY_SEARCH", "args": {"query": "name"}}]
+
+Your response:`;
+
+    try {
+      const config = readAgentConfig();
+      const planResponse = await callOllama(memoryPlanPrompt, config.model, false);
+      const planText = planResponse.toString().trim();
+      
+      // Parse and execute the memory plan
+      let plan = [];
+      try {
+        plan = JSON.parse(planText);
+      } catch {
+        // If parsing fails, continue with normal flow
+      }
+
+      if (plan.length > 0) {
+        // Execute memory actions using the same approach as planner
+        const { runPlan } = await import("../executor/executor.js");
+        const results = await runPlan(plan, false);
+        
+        // After executing memory actions, continue with normal LLM response
+        // The LLM will naturally respond based on the updated memory context
+      }
+    } catch {
+      // If memory planning fails, continue with normal flow
+    }
+  }
+  
   // Load memory context (sync now)
   const memoryContext = getRelevantMemoryContext(userInput);
 
@@ -170,6 +290,9 @@ export async function* generateResponse(
 ): AsyncGenerator<string> {
   const systemRules = getSystemContextAsRules();
   const actionsText = buildActionsText();
+  
+  // CRITICAL: Load memory BEFORE processing the request
+  await loadAllMemory();
   
   // Load memory context (sync now)
   const memoryContext = getRelevantMemoryContext(userInput);

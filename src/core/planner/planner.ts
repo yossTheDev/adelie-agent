@@ -5,6 +5,27 @@ import { getPlannerPromt } from "./prompt.js";
 import { SkillLoader } from "../skills/skill-loader.js";
 import { getMemoryStore } from "../memory/memory-store.js";
 
+function formatPlannerMemoryValue(key: string, value: any, source?: string): string {
+  const sourceInfo = source ? ` (source: ${source})` : "";
+  
+  if (typeof value === 'string') {
+    return `📍 ${key}: "${value}"${sourceInfo}`;
+  } else if (typeof value === 'object' && value !== null) {
+    if (Array.isArray(value)) {
+      return `📋 ${key}: Array[${value.length}] [${value.slice(0, 3).map(item => JSON.stringify(item)).join(', ')}${value.length > 3 ? '...' : ''}]${sourceInfo}`;
+    } else {
+      const keys = Object.keys(value);
+      return `🗂️ ${key}: Object{${keys.join(', ')}}${sourceInfo}`;
+    }
+  } else if (typeof value === 'boolean') {
+    return `✅ ${key}: ${value ? 'TRUE' : 'FALSE'}${sourceInfo}`;
+  } else if (typeof value === 'number') {
+    return `🔢 ${key}: ${value}${sourceInfo}`;
+  } else {
+    return `❓ ${key}: ${JSON.stringify(value)}${sourceInfo}`;
+  }
+}
+
 interface PlanAction {
   id: string;
   action: string;
@@ -96,7 +117,8 @@ const loadPlannerMemory = async (): Promise<void> => {
     const memoryTexts: string[] = [];
     for (const entry of allMemory) {
       const value = await memoryStore.get(entry.key);
-      memoryTexts.push(`- ${entry.key}: ${JSON.stringify(value)}`);
+      const formattedValue = formatPlannerMemoryValue(entry.key, value, entry.source);
+      memoryTexts.push(formattedValue);
     }
 
     plannerLoadedMemory = memoryTexts.length > 0
@@ -156,12 +178,14 @@ export async function generatePlan(
   debug: boolean = false,
   isWorker: boolean = false,
 ): Promise<PlanAction[]> {
+  // CRITICAL: Load memory BEFORE planning
+  await loadPlannerMemory();
+  
   // Load skills for context
   await SkillLoader.loadAllSkills();
   const skillsText = SkillLoader.getSkillsForPlanner();
 
   // Load all memory once at startup
-  await loadPlannerMemory();
   const memoryContext = getPlannerMemoryContext(userInput);
 
   const actionsInfo = Object.entries(ACTION_ARGS).map(([action, args]) => {

@@ -781,6 +781,11 @@ Respond with ONLY "planner" if it's:
 - Request to search, find, or locate specific items
 - Request to install, build, or execute commands
 - Any task that requires step-by-step execution
+- File system operations
+- External tool usage
+- Memory commands: "remember this", "save this", "store this", "recall", "forget", etc.
+- Personal information the user wants to store
+- Requests to remember/recall information
 
 Your response (ask/planner):`;
 
@@ -792,8 +797,10 @@ Your response (ask/planner):`;
   } catch {
     // Fallback to simple heuristic if LLM fails
     const actionWords = ["create", "delete", "modify", "update", "install", "build", "run", "execute", "search", "find", "list", "show"];
+    const memoryWords = ["remember", "save", "store", "recall", "forget", "guarda", "recuerda", "almacena"];
     const hasActionWords = actionWords.some(word => query.toLowerCase().includes(word));
-    return hasActionWords ? "planner" : "ask";
+    const hasMemoryWords = memoryWords.some(word => query.toLowerCase().includes(word));
+    return (hasActionWords || hasMemoryWords) ? "planner" : "ask";
   }
 };
 
