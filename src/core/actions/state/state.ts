@@ -52,7 +52,10 @@ export const stateGet = (args: { key: string }): ActionResult => {
   }
 };
 
-export const stateSet = (args: { key: string; content: string }): ActionResult => {
+export const stateSet = (args: {
+  key: string;
+  content: string;
+}): ActionResult => {
   try {
     if (!args.key) return [false, "Missing key for STATE_SET"];
     memoryBuffer[args.key] = [String(args.content ?? "")];
