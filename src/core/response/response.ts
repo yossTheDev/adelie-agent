@@ -5,25 +5,26 @@ import { callOllama } from "../llm/llm.js";
 import { getMemoryStore } from "../memory/memory-store.js";
 import type { ExecutionSummary } from "./types.js";
 
-function formatMemoryValue(key: string, value: any, source?: string): string {
+function formatMemoryValueWithInstruction(key: string, value: any, source?: string, instruction?: string): string {
   const timestamp = new Date().toISOString();
   const sourceInfo = source ? ` (source: ${source})` : "";
+  const instructionInfo = instruction ? `\n  📋 Context instruction: "${instruction}"` : "";
   
   if (typeof value === 'string') {
-    return `📝 ${key}: "${value}"${sourceInfo}`;
+    return `📝 ${key}: "${value}"${sourceInfo}${instructionInfo}`;
   } else if (typeof value === 'object' && value !== null) {
     if (Array.isArray(value)) {
-      return `📋 ${key}: [${value.map(item => JSON.stringify(item)).join(', ')}]${sourceInfo}`;
+      return `📋 ${key}: [${value.map(item => JSON.stringify(item)).join(', ')}]${sourceInfo}${instructionInfo}`;
     } else {
       const objStr = JSON.stringify(value, null, 2);
-      return `🗂️ ${key}: ${objStr}${sourceInfo}`;
+      return `🗂️ ${key}: ${objStr}${sourceInfo}${instructionInfo}`;
     }
   } else if (typeof value === 'boolean') {
-    return `✅ ${key}: ${value ? 'true' : 'false'}${sourceInfo}`;
+    return `✅ ${key}: ${value ? 'true' : 'false'}${sourceInfo}${instructionInfo}`;
   } else if (typeof value === 'number') {
-    return `🔢 ${key}: ${value}${sourceInfo}`;
+    return `🔢 ${key}: ${value}${sourceInfo}${instructionInfo}`;
   } else {
-    return `❓ ${key}: ${JSON.stringify(value)}${sourceInfo}`;
+    return `❓ ${key}: ${JSON.stringify(value)}${sourceInfo}${instructionInfo}`;
   }
 }
 
@@ -50,7 +51,7 @@ const loadAllMemory = async (): Promise<void> => {
     const memoryTexts: string[] = [];
     for (const entry of allMemory) {
       const value = await memoryStore.get(entry.key);
-      const formattedValue = formatMemoryValue(entry.key, value, entry.source);
+      const formattedValue = formatMemoryValueWithInstruction(entry.key, value, entry.source, entry.instruction);
       memoryTexts.push(formattedValue);
     }
 

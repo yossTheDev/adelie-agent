@@ -17,41 +17,60 @@ export const memorySet = async (args: {
     }
 
     let processedValue = args.value;
+    let processedInstruction = args.instruction;
     
     // If value is a string and there's an instruction, process with AI
-    if (typeof args.value === "string" && args.instruction) {
+    if (typeof args.value === "string" && args.instruction && args.instruction.trim() !== "") {
       const internalPrompt = `
         [SYSTEM: MEMORY PROCESSOR]
         TASK: ${args.instruction}
         INPUT_DATA: "${args.value}"
 
         INSTRUCTION: Process INPUT_DATA based on TASK for memory storage.
-        Return structured, useful information that can be easily retrieved later.
-        Use JSON format when appropriate. Do not include explanations or conversational filler.
+        Return ONLY a JSON object with "data" and "instruction" fields.
+        Do not include explanations or conversational filler.
+        Format: {"data": "...", "instruction": "..."}
       `;
 
       try {
         const aiResult = await callOllama(internalPrompt, undefined, false);
-        const cleanResult = (aiResult as string)
+        let cleanResult = (aiResult as string)
           .replace(/```[\s\S]*?```/g, "")
           .trim();
+        
+        // Try to extract JSON from response
+        const jsonMatch = cleanResult.match(/\{[\s\S]*\}/);
+        if (jsonMatch) {
+          cleanResult = jsonMatch[0];
+        }
 
-        // Try to parse as JSON, fallback to string if fails
+        // Try to parse as JSON with data and instruction
         try {
-          processedValue = JSON.parse(cleanResult);
+          const parsed = JSON.parse(cleanResult);
+          if (parsed.data !== undefined) {
+            processedValue = parsed.data;
+          }
+          if (parsed.instruction !== undefined) {
+            processedInstruction = parsed.instruction;
+          }
         } catch {
-          processedValue = cleanResult;
+          // Fallback: use original value and instruction
+          processedValue = args.value;
+          processedInstruction = args.instruction;
         }
       } catch (aiError) {
         // If AI processing fails, use original value
         console.warn(`AI processing failed for memory key '${args.key}': ${String(aiError)}`);
+        processedValue = args.value;
+        processedInstruction = args.instruction;
       }
     }
 
     const memoryStore = getMemoryStore();
-    await memoryStore.set(args.key, processedValue, args.source);
     
-    return [true, `Stored processed value in memory under key '${args.key}'`];
+    await memoryStore.set(args.key, processedValue, args.source, processedInstruction);
+    
+    return [true, `Stored processed value in memory under key '${args.key}'${processedInstruction ? ' with AI instruction' : ''}`];
   } catch (error) {
     return [false, `MEMORY_SET Error: ${String(error)}`];
   }

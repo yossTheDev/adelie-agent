@@ -6,6 +6,7 @@ interface MemoryEntry {
   value: any;
   timestamp: number;
   source?: string;
+  instruction?: string; 
 }
 
 interface MemoryData {
@@ -54,9 +55,10 @@ export class MemoryStore {
   }
 
   /**
-   * Store a value with optional metadata
+   * Store a value with optional metadata and AI instruction
    */
-  async set(key: string, value: any, source?: string): Promise<void> {
+  async set(key: string, value: any, source?: string, instruction?: string): Promise<void> {
+    // Load data first to ensure we have latest state
     await this.load();
     
     // Validate key
@@ -74,9 +76,14 @@ export class MemoryStore {
     this.data[key] = {
       value,
       timestamp: Date.now(),
-      source
+      source,
+      instruction
     };
     
+    // Reset loaded flag to force reload on next get
+    this.loaded = false;
+    
+    // Save immediately to ensure data persistence
     await this.save();
   }
 
@@ -143,26 +150,28 @@ export class MemoryStore {
   /**
    * Search for keys/values matching a query
    */
-  async search(query: string): Promise<{ key: string; value: any; timestamp: number; source?: string }[]> {
+  async search(query: string): Promise<{ key: string; value: any; timestamp: number; source?: string; instruction?: string }[]> {
     await this.load();
     
     if (!query || typeof query !== "string") {
       throw new Error("Search query must be a non-empty string");
     }
 
-    const results: { key: string; value: any; timestamp: number; source?: string }[] = [];
+    const results: { key: string; value: any; timestamp: number; source?: string; instruction?: string }[] = [];
     const lowerQuery = query.toLowerCase();
 
     for (const [key, entry] of Object.entries(this.data)) {
       const keyMatch = key.toLowerCase().includes(lowerQuery);
       const valueMatch = JSON.stringify(entry.value).toLowerCase().includes(lowerQuery);
+      const instructionMatch = entry.instruction && entry.instruction.toLowerCase().includes(lowerQuery);
       
-      if (keyMatch || valueMatch) {
+      if (keyMatch || valueMatch || instructionMatch) {
         results.push({
           key,
           value: entry.value,
           timestamp: entry.timestamp,
-          source: entry.source
+          source: entry.source,
+          instruction: entry.instruction
         });
       }
     }
@@ -173,13 +182,16 @@ export class MemoryStore {
   /**
    * List all keys with metadata
    */
-  async list(): Promise<{ key: string; timestamp: number; source?: string }[]> {
+  async list(): Promise<{ key: string; timestamp: number; source?: string; instruction?: string }[]> {
+    // Force reload to ensure we have latest data
+    this.loaded = false;
     await this.load();
     
     return Object.entries(this.data).map(([key, entry]) => ({
       key,
       timestamp: entry.timestamp,
-      source: entry.source
+      source: entry.source,
+      instruction: entry.instruction
     }));
   }
 

@@ -5,6 +5,28 @@ import { getPlannerPromt } from "./prompt.js";
 import { SkillLoader } from "../skills/skill-loader.js";
 import { getMemoryStore } from "../memory/memory-store.js";
 
+function formatPlannerMemoryValueWithInstruction(key: string, value: any, source?: string, instruction?: string): string {
+  const sourceInfo = source ? ` (source: ${source})` : "";
+  const instructionInfo = instruction ? `\n  📋 Context instruction: "${instruction}"` : "";
+  
+  if (typeof value === 'string') {
+    return `📍 ${key}: "${value}"${sourceInfo}${instructionInfo}`;
+  } else if (typeof value === 'object' && value !== null) {
+    if (Array.isArray(value)) {
+      return `📋 ${key}: Array[${value.length}] [${value.slice(0, 3).map(item => JSON.stringify(item)).join(', ')}${value.length > 3 ? '...' : ''}]${sourceInfo}${instructionInfo}`;
+    } else {
+      const keys = Object.keys(value);
+      return `🗂️ ${key}: Object{${keys.join(', ')}}${sourceInfo}${instructionInfo}`;
+    }
+  } else if (typeof value === 'boolean') {
+    return `✅ ${key}: ${value ? 'TRUE' : 'FALSE'}${sourceInfo}${instructionInfo}`;
+  } else if (typeof value === 'number') {
+    return `🔢 ${key}: ${value}${sourceInfo}${instructionInfo}`;
+  } else {
+    return `❓ ${key}: ${JSON.stringify(value)}${sourceInfo}${instructionInfo}`;
+  }
+}
+
 function formatPlannerMemoryValue(key: string, value: any, source?: string): string {
   const sourceInfo = source ? ` (source: ${source})` : "";
   
@@ -89,7 +111,13 @@ const sanitizePlan = (raw: unknown): PlanAction[] => {
     const allowedArgs = new Set(ACTION_ARGS[action] || []);
     const filteredArgs: Record<string, any> = {};
     for (const [key, value] of Object.entries(args)) {
-      if (allowedArgs.has(key)) filteredArgs[key] = value;
+      // Handle optional arguments (those ending with ?)
+      const isOptional = Array.from(allowedArgs).some(arg => 
+        arg === key || arg.replace(/\?$/, '') === key
+      );
+      if (isOptional) {
+        filteredArgs[key] = value;
+      }
     }
 
     safe.push({
@@ -117,7 +145,7 @@ const loadPlannerMemory = async (): Promise<void> => {
     const memoryTexts: string[] = [];
     for (const entry of allMemory) {
       const value = await memoryStore.get(entry.key);
-      const formattedValue = formatPlannerMemoryValue(entry.key, value, entry.source);
+      const formattedValue = formatPlannerMemoryValueWithInstruction(entry.key, value, entry.source, entry.instruction);
       memoryTexts.push(formattedValue);
     }
 
