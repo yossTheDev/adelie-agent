@@ -2,7 +2,6 @@ import os from "node:os";
 import path from "node:path";
 
 interface SystemContext {
-  username: string;
   home_dir: string;
   folders: Record<string, string>;
   os: string;
@@ -52,7 +51,6 @@ export const getSystemContext = (): Partial<SystemContext> => {
     }
 
     return {
-      username: os.userInfo().username,
       home_dir: homeDir,
       folders,
       os: platform,
@@ -89,7 +87,6 @@ export const getSystemContextAsRules = (): string => {
     .join("\n");
 
   return `
-Username: ${ctx.username}
 Home directory: ${ctx.home_dir}
 User folders:
 ${folderRules}
