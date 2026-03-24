@@ -4,12 +4,21 @@ import path from "node:path";
 
 type McpServer = {
   name: string;
-  command: string;
-  args: string[];
+  command?: string;
+  args?: string[];
   tools: string[];
   env: Record<string, string>;
   package?: string;
   installed_at: string;
+  type?: "stdio" | "http";
+  url?: string;
+  headers?: Record<string, string>;
+  auth?: {
+    type?: "bearer" | "basic";
+    token?: string;
+    username?: string;
+    password?: string;
+  };
 };
 
 type McpConfig = {
@@ -51,11 +60,20 @@ export const listMcpServers = (): McpServer[] => {
 
 export const installMcpServer = (args: {
   name: string;
-  command: string;
+  command?: string;
   commandArgs?: string[];
   tools?: string[];
   env?: Record<string, string>;
   packageName?: string;
+  type?: "stdio" | "http";
+  url?: string;
+  headers?: Record<string, string>;
+  auth?: {
+    type?: "bearer" | "basic";
+    token?: string;
+    username?: string;
+    password?: string;
+  };
 }): McpServer => {
   const config = readMcpConfig();
   const withoutExisting = config.servers.filter((s) => s.name !== args.name);
@@ -67,6 +85,10 @@ export const installMcpServer = (args: {
     env: args.env || {},
     package: args.packageName,
     installed_at: new Date().toISOString(),
+    type: args.type || "stdio",
+    url: args.url,
+    headers: args.headers,
+    auth: args.auth,
   };
   const next: McpConfig = { servers: [...withoutExisting, server] };
   writeMcpConfig(next);

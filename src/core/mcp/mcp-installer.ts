@@ -44,7 +44,11 @@ export class McpInstaller {
           command: server.command,
           commandArgs: server.args,
           env: server.env ? resolveEnvironmentVariables(server.env) : undefined,
-          tools: [] // Will be populated when skills are installed
+          tools: [], // Will be populated when skills are installed
+          type: server.type,
+          url: server.url,
+          headers: server.headers,
+          auth: server.auth
         });
       }
 
@@ -74,7 +78,11 @@ export class McpInstaller {
         command: server.command,
         commandArgs: server.args,
         env: server.env ? resolveEnvironmentVariables(server.env) : undefined,
-        tools: []
+        tools: [],
+        type: server.type,
+        url: server.url,
+        headers: server.headers,
+        auth: server.auth
       });
 
       // Auto-sync tools for this server

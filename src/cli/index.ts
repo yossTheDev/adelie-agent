@@ -304,7 +304,7 @@ const handleMcpCommand = async (args: string[]) => {
         const serverInfo = await McpInstaller.getServerInfo(serverName);
         if (serverInfo) {
           console.log(
-            `- ${serverName} -> ${`${serverInfo.command} ${serverInfo.args.join(" ")}`.trim()}`,
+            `- ${serverName} -> ${`${serverInfo.command} ${(serverInfo.args || []).join(" ")}`.trim()}`,
           );
         }
       }

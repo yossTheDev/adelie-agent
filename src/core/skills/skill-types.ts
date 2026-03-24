@@ -22,12 +22,22 @@ export interface McpToolDefinition {
 
 export interface McpServerConfig {
   name: string;
-  command: string;
-  args: string[];
+  command?: string;
+  args?: string[];
   tools?: McpToolDefinition[] | string[];
   env?: Record<string, string>;
   package?: string;
   description?: string;
+  // HTTP/HTTPS transport configuration
+  type?: "stdio" | "http";
+  url?: string;
+  headers?: Record<string, string>;
+  auth?: {
+    type?: "bearer" | "basic";
+    token?: string;
+    username?: string;
+    password?: string;
+  };
 }
 
 export interface Skill {
@@ -60,7 +70,16 @@ export interface McpPreset {
 
 export interface McpServer {
   name: string;
-  command: string;
-  args: string[];
+  command?: string;
+  args?: string[];
   env?: Record<string, string>;
+  type?: "stdio" | "http";
+  url?: string;
+  headers?: Record<string, string>;
+  auth?: {
+    type?: "bearer" | "basic";
+    token?: string;
+    username?: string;
+    password?: string;
+  };
 }

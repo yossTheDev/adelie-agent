@@ -100,11 +100,8 @@ The skill will search GitHub for TypeScript repositories with the specified crit
 ```json
 {
   "name": "github",
-  "command": "npx",
-  "args": [
-    "-y",
-    "@github/github-mcp-server"
-  ],
+  "type": "http",
+  "url": "https://api.githubcopilot.com/mcp/",
   "description": "Official GitHub MCP server for repository management and search",
   "env": {
     "GITHUB_PERSONAL_ACCESS_TOKEN": "${GITHUB_TOKEN}"

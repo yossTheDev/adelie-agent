@@ -1,5 +1,6 @@
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { StdioClientTransport } from "@modelcontextprotocol/sdk/client/stdio.js";
+import { StreamableHTTPClientTransport } from "@modelcontextprotocol/sdk/client/streamableHttp.js";
 import type { McpServer } from "../skills/skill-types.js";
 import { listMcpServers } from "../config/mcp-config.js";
 
@@ -11,7 +12,7 @@ export interface McpTool {
 
 export class McpClientManager {
   private static clients: Map<string, Client> = new Map();
-  private static transports: Map<string, StdioClientTransport> = new Map();
+  private static transports: Map<string, any> = new Map(); // Using any for both transport types
 
   /**
    * Connect to an MCP server and return the client
@@ -32,15 +33,59 @@ export class McpClientManager {
         return null;
       }
 
-      // Create transport
-      const transport = new StdioClientTransport({
-        command: serverConfig.command,
-        args: serverConfig.args,
-        env: {
-          ...process.env,
-          ...(serverConfig.env || {})
+      // Create transport based on type
+      let transport: any;
+      
+      if (serverConfig.type === "http" && serverConfig.url) {
+        // HTTP/HTTPS transport
+        const headers: Record<string, string> = {};
+        
+        // Add auth headers if configured
+        if (serverConfig.auth) {
+          if (serverConfig.auth.type === "bearer" && serverConfig.auth.token) {
+            headers["Authorization"] = `Bearer ${serverConfig.auth.token}`;
+          } else if (serverConfig.auth.type === "basic" && serverConfig.auth.username && serverConfig.auth.password) {
+            const credentials = Buffer.from(`${serverConfig.auth.username}:${serverConfig.auth.password}`).toString('base64');
+            headers["Authorization"] = `Basic ${credentials}`;
+          }
         }
-      });
+        
+        // Add custom headers
+        if (serverConfig.headers) {
+          Object.assign(headers, serverConfig.headers);
+        }
+        
+        // Replace environment variables in URL
+        const url = serverConfig.url.replace(/\$\{([^}]+)\}/g, (match, envVar) => {
+          return process.env[envVar] || match;
+        });
+        
+        transport = new StreamableHTTPClientTransport(
+          new URL(url),
+          {
+            requestInit: {
+              headers
+            }
+          }
+        );
+      } else {
+        // STDIO transport (default)
+        if (!serverConfig.command) {
+          console.error(`Server '${serverName}' missing command for STDIO transport`);
+          return null;
+        }
+        
+        transport = new StdioClientTransport({
+          command: serverConfig.command,
+          args: serverConfig.args || [],
+          env: Object.fromEntries(
+            Object.entries({
+              ...process.env,
+              ...(serverConfig.env || {})
+            }).filter(([_, value]) => value !== undefined)
+          ) as Record<string, string>
+        });
+      }
 
       // Create and connect client
       const client = new Client(
@@ -59,7 +104,7 @@ export class McpClientManager {
       this.clients.set(serverName, client);
       this.transports.set(serverName, transport);
 
-      console.log(`✅ Connected to MCP server: ${serverName}`);
+      console.log(`✅ Connected to MCP server: ${serverName} (${serverConfig.type || "stdio"})`);
       return client;
     } catch (error) {
       console.error(`Failed to connect to MCP server '${serverName}':`, error);
