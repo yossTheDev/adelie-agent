@@ -1,6 +1,6 @@
 # Architecture
 
-YI Agent is split into deterministic layers:
+Adelie Agent is split into deterministic layers:
 
 1. **Planner** (`src/core/planner`)
    - Converts user input into JSON plans with strict action constraints.

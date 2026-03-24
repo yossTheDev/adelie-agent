@@ -168,7 +168,7 @@ Description of expected result
 
 ```bash
 # Install a skill with its own MCP configuration
-yi skills install my-custom-skill.skill.md
+adelie skills install my-custom-skill.skill.md
 
 # System will automatically detect the configuration and use it
 ```
@@ -177,7 +177,7 @@ yi skills install my-custom-skill.skill.md
 
 ```bash
 # Validate that all skills have valid configurations
-yi skills validate
+adelie skills validate
 ```
 
 ## Planner Integration

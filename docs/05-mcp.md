@@ -1,6 +1,6 @@
 # MCP Integration
 
-YI Agent supports local MCP registration and planner exposure.
+Adelie Agent supports local MCP registration and planner exposure.
 
 ## Storage
 
@@ -16,19 +16,19 @@ YI Agent supports local MCP registration and planner exposure.
 
 ## CLI Commands
 
-- `yi mcp list`
-- `yi mcp install <name> <command> [args...] [--tools=tool1,tool2]`
-- `yi mcp install-preset <github|notion>`
-- `yi mcp set-env <server> <ENV_KEY> <value>`
-- `yi mcp sync-tools <server>`
-- `yi mcp remove <name>`
-- `yi mcp path`
+- `adelie mcp list`
+- `adelie mcp install <name> <command> [args...] [--tools=tool1,tool2]`
+- `adelie mcp install-preset <github|notion>`
+- `adelie mcp set-env <server> <ENV_KEY> <value>`
+- `adelie mcp sync-tools <server>`
+- `adelie mcp remove <name>`
+- `adelie mcp path`
 
 ## Planner Exposure
 
 At plan-generation time, installed MCP tools are injected into prompt context.
 
-After installing a server, run `yi mcp sync-tools <server>` so tools are discovered live and exposed to the planner.
+After installing a server, run `adelie mcp sync-tools <server>` so tools are discovered live and exposed to the planner.
 
 ## Execution
 

@@ -14,7 +14,7 @@ User configuration is stored at:
 
 ## CLI Commands
 
-- `yi config show`
-- `yi config set <key> <value>`
-- `yi config reset`
-- `yi config path`
+- `adelie config show`
+- `adelie config set <key> <value>`
+- `adelie config reset`
+- `adelie config path`

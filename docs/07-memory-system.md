@@ -1,10 +1,10 @@
 # Memory System
 
-The YI Agent includes an automatic memory system that loads at startup and actively uses stored information in responses.
+The Adelie Agent includes an automatic memory system that loads at startup and actively uses stored information in responses.
 
 ## Overview
 
-The memory system provides persistent storage and automatic retrieval of user information, preferences, and context. Unlike traditional systems that require manual retrieval commands, YI Agent loads all memory at startup and makes it automatically available in both planning and response generation.
+The memory system provides persistent storage and automatic retrieval of user information, preferences, and context. Unlike traditional systems that require manual retrieval commands, Adelie Agent loads all memory at startup and makes it automatically available in both planning and response generation.
 
 ## Features
 
@@ -31,31 +31,31 @@ The memory system provides persistent storage and automatic retrieval of user in
 ### Storage Commands
 ```bash
 # Store simple data
-yi memory set user_name "Alice"
+adelie memory set user_name "Alice"
 
 # Store with AI processing
-yi memory set user_profile "Alice is a developer who loves TypeScript" --instruction "Extract user info as JSON"
+adelie memory set user_profile "Alice is a developer who loves TypeScript" --instruction "Extract user info as JSON"
 
 # Store structured data
-yi memory set preferences '{"theme": "dark", "language": "typescript"}'
+adelie memory set preferences '{"theme": "dark", "language": "typescript"}'
 ```
 
 ### Management Commands
 ```bash
 # List all memory entries
-yi memory list
+adelie memory list
 
 # Search memory
-yi memory search "preferences"
+adelie memory search "preferences"
 
 # Delete specific entry
-yi memory delete user_name
+adelie memory delete user_name
 
 # Clear all memory
-yi memory clear
+adelie memory clear
 
 # Get memory statistics
-yi memory stats
+adelie memory stats
 ```
 
 ## AI Processing
@@ -70,7 +70,7 @@ The `MEMORY_SET` action supports optional AI processing for intelligent data ext
 
 ### AI Processing Example
 ```bash
-yi memory set profile "John is a 30-year-old frontend developer specializing in React and TypeScript. He works at TechCorp and loves coffee." \
+adelie memory set profile "John is a 30-year-old frontend developer specializing in React and TypeScript. He works at TechCorp and loves coffee." \
   --instruction "Extract person information as JSON with name, age, profession, skills, company, and preferences fields"
 ```
 
@@ -167,4 +167,4 @@ Memory context is available to MCP tools:
 - MCP tool results can be stored in memory
 - Memory provides context for external tool operations
 
-This memory system ensures that YI Agent provides personalized, context-aware interactions without requiring manual memory management commands.
+This memory system ensures that Adelie Agent provides personalized, context-aware interactions without requiring manual memory management commands.

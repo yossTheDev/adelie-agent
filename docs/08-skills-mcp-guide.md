@@ -2,7 +2,7 @@
 
 ## Overview
 
-The YI Agent now includes a powerful Skills and MCP (Model Context Protocol) integration system that allows users to install predefined capabilities and enhance the agent's functionality.
+The Adelie Agent now includes a powerful Skills and MCP (Model Context Protocol) integration system that allows users to install predefined capabilities and enhance the agent's functionality.
 
 ## Quick Start
 
@@ -10,26 +10,26 @@ The YI Agent now includes a powerful Skills and MCP (Model Context Protocol) int
 
 ```bash
 # Install GitHub integration
-yi mcp install-preset github
+adelie mcp install-preset github
 
 # Install web search capabilities
-yi mcp install-preset web-search
+adelie mcp install-preset web-search
 
 # Install complete preset (all common tools)
-yi mcp install-preset complete
+adelie mcp install-preset complete
 ```
 
 ### 2. Install Skills
 
 ```bash
 # Install a skill file
-yi skills install examples/github-search.skill.md
+adelie skills install examples/github-search.skill.md
 
 # List installed skills
-yi skills list
+adelie skills list
 
 # Validate all skills
-yi skills validate
+adelie skills validate
 ```
 
 ### 3. Use Skills in Agent
@@ -165,54 +165,54 @@ When a skill includes this configuration, the system will use this specific MCP 
 
 ```bash
 # List available presets
-yi mcp install-preset
+adelie mcp install-preset
 
 # Install a preset
-yi mcp install-preset <preset-name>
+adelie mcp install-preset <preset-name>
 
 # List installed MCP servers
-yi mcp list
+adelie mcp list
 
 # Remove an MCP server
-yi mcp remove <server-name>
+adelie mcp remove <server-name>
 
 # Set environment variables
-yi mcp set-env <server> <KEY> <value>
+adelie mcp set-env <server> <KEY> <value>
 ```
 
 ### Skills Management
 
 ```bash
 # List installed skills
-yi skills list
+adelie skills list
 
 # Install a skill
-yi skills install <path/to/skill.skill.md>
+adelie skills install <path/to/skill.skill.md>
 
 # Remove a skill
-yi skills remove <skill-name>
+adelie skills remove <skill-name>
 
 # Validate all skills
-yi skills validate
+adelie skills validate
 ```
 
 ## Example Skills
 
 ### GitHub Search
 ```bash
-yi skills install examples/github-search.skill.md
+adelie skills install examples/github-search.skill.md
 ```
 Usage: "Find React repositories on GitHub"
 
 ### Web Search & Summarize
 ```bash
-yi skills install examples/web-search-and-summarize.skill.md
+adelie skills install examples/web-search-and-summarize.skill.md
 ```
 Usage: "Search for AI news and summarize the findings"
 
 ### File Analyzer
 ```bash
-yi skills install examples/file-analyzer.skill.md
+adelie skills install examples/file-analyzer.skill.md
 ```
 Usage: "Analyze all TypeScript files in the src directory"
 
@@ -226,7 +226,7 @@ Some MCP servers require environment variables:
 
 Set them with:
 ```bash
-yi mcp set-env github GITHUB_TOKEN your_token_here
+adelie mcp set-env github GITHUB_TOKEN your_token_here
 ```
 
 ## File Locations
@@ -237,12 +237,12 @@ yi mcp set-env github GITHUB_TOKEN your_token_here
 ## Troubleshooting
 
 ### Skill Installation Fails
-1. Check skill file format with `yi skills validate`
+1. Check skill file format with `adelie skills validate`
 2. Ensure all required sections are present
 3. Verify JSON template is valid
 
 ### MCP Server Issues
-1. Check if server is installed: `yi mcp list`
+1. Check if server is installed: `adelie mcp list`
 2. Verify environment variables are set
 3. Check server logs for errors
 

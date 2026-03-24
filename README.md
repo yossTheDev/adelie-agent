@@ -1,16 +1,45 @@
 # Adelie
 
-▲ Adelie is your local assistant - a deterministic automation agent that lives on your machine and respects your privacy.
+▲ Adelie is your local assistant - a deterministic automation agent optimized for small LLMs that lives on your machine and respects your privacy.
 
 I'm designed to be a collaborator, not just a tool. I run locally, think step-by-step, and help you get things done with a natural, helpful personality.
 
 ## What makes Adelie different
 
-- **Local-first**: I run entirely on your machine (Victus). No cloud, no data leaving your system.
-- **Deterministic**: I follow a strict Planner → Executor → Response architecture to minimize errors.
+- **Local-first**: I run entirely on your machine. No cloud, no data leaving your system.
+- **Optimized for Small LLMs**: My Planner → Executor → Response architecture is specifically designed to work efficiently with smaller models, reducing context requirements and improving reliability.
+- **Deterministic**: I follow a strict layered architecture to minimize errors and maximize predictability.
 - **Natural personality**: I speak like a helpful assistant, not a computer system.
 - **Privacy-respecting**: Your data stays yours. Memory and configuration are stored locally.
 - **Step-by-step transparency**: You'll always see my plan before I execute anything.
+
+## Architecture Advantage for Small LLMs
+
+Traditional agents rely on large models to handle complex reasoning in a single step. Adelie's architecture breaks down tasks into manageable layers:
+
+### 1. **Planner Layer** (`src/core/planner`)
+- Converts user input into structured JSON plans
+- Uses deterministic action constraints to reduce complexity
+- Optimized prompts that work well with smaller context windows
+- Sanitizes and validates plans before execution
+
+### 2. **Executor Layer** (`src/core/executor`)
+- Executes plans step-by-step with deterministic control flow
+- Handles context piping (`$$step_id`) automatically
+- Supports loops (`FOR_EACH`, `WHILE`) and conditions (`IF`)
+- Manages state and memory without requiring complex reasoning
+
+### 3. **Response Layer** (`src/core/response`)
+- Generates natural language responses from execution results
+- Separates execution logic from communication
+- Provides clear, helpful feedback to users
+
+**Why this matters for small LLMs:**
+- **Reduced Context Requirements**: Each layer only needs to focus on its specific task
+- **Deterministic Behavior**: Less reliance on complex reasoning capabilities
+- **Modular Design**: Smaller, focused prompts that work reliably with limited models
+- **Error Containment**: Issues in one layer don't cascade to others
+- **Predictable Performance**: Consistent behavior across different model sizes
 
 ## Highlights
 
@@ -32,7 +61,7 @@ I'm designed to be a collaborator, not just a tool. I run locally, think step-by
 - `src/core/response` - final user-facing response generation
 - `src/cli` - interactive TUI and management commands
 
-See detailed docs in [`docs/README.md`](docs/README.md).
+See detailed documentation in the [`docs/`](docs/) directory with numbered guides.
 
 ## Installation
 
@@ -183,12 +212,15 @@ yarn test:plans
 
 ## Documentation
 
-- [`docs/architecture.md`](docs/architecture.md)
-- [`docs/planner.md`](docs/planner.md)
-- [`docs/executor.md`](docs/executor.md)
-- [`docs/configuration.md`](docs/configuration.md)
-- [`docs/mcp.md`](docs/mcp.md)
-- [`docs/testing.md`](docs/testing.md)
+- [`docs/01-architecture.md`](docs/01-architecture.md) - System architecture overview
+- [`docs/02-configuration.md`](docs/02-configuration.md) - Configuration guide
+- [`docs/03-planner.md`](docs/03-planner.md) - Planner layer details
+- [`docs/04-executor.md`](docs/04-executor.md) - Executor layer details
+- [`docs/05-mcp.md`](docs/05-mcp.md) - MCP integration
+- [`docs/06-testing.md`](docs/06-testing.md) - Testing framework
+- [`docs/07-memory-system.md`](docs/07-memory-system.md) - Memory system
+- [`docs/08-skills-mcp-guide.md`](docs/08-skills-mcp-guide.md) - Skills and MCP guide
+- [`docs/09-mcp-config-in-skills.md`](docs/09-mcp-config-in-skills.md) - MCP configuration in skills
 
 ## Changelog
 
@@ -196,4 +228,4 @@ See [`CHANGELOG.md`](CHANGELOG.md).
 
 ---
 
-**Adelie** - Your local assistant. Privacy-first, step-by-step, always helpful.
+**Adelie** - Your local assistant. Optimized for small LLMs, privacy-first, step-by-step, always helpful.
