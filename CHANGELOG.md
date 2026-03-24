@@ -1,5 +1,44 @@
 # Changelog
 
+## v1.1.0
+
+### Added
+- **MCP Presets + Skills System**: Complete integration of Model Context Protocol with Skills
+  - 8 MCP presets: github, web-search, docs, file-index, database, pdf, shell-system, complete
+  - Skills system with `.skill.md` file format and validation
+  - Embedded MCP server configuration in skills (MCP Server Config section)
+  - Automatic skill installation when installing MCP presets
+  - CLI commands for MCP and Skills management
+- **Skills Features**:
+  - Template expansion with `$$input.param` variables
+  - DataPiping integration with existing system
+  - MCP server dependency detection and installation
+  - Skill validation and caching
+- **Preset Skills**: 8 pre-defined skills in `skills/presets/`:
+  - `github.skill.md` - GitHub repository search
+  - `web-search.skill.md` - Web search and summarization
+  - `file-index.skill.md` - File search and analysis
+  - `docs-retrieval.skill.md` - Web documentation fetching
+  - `database-query.skill.md` - Database querying and analysis
+  - `pdf-analysis.skill.md` - PDF document analysis
+  - `shell-commands.skill.md` - Safe shell command execution
+  - `complete-toolkit.skill.md` - Comprehensive multi-tool analysis
+- **CLI Enhancements**:
+  - `yi mcp install-preset <preset>` - Install MCP preset with associated skills
+  - `yi skills install <file>` - Install skill with automatic MCP dependency installation
+  - `yi skills list/remove/validate` - Complete skill management
+- **Documentation**: Complete English documentation in `docs/SKILLS_MCP_GUIDE.md` and `docs/MCP_CONFIG_IN_SKILLS.md`
+
+### Changed
+- **Planner Integration**: Modified to load skills and inject into planning context
+- **Executor**: Enhanced to handle MCP_RUN and USE_SKILL actions
+- **Skill Loader**: Automatic MCP server installation and dependency management
+
+### Fixed
+- **Import errors**: Resolved duplicate imports in mcp-installer.ts
+- **TypeScript errors**: Fixed type imports and lint issues
+- **DataPiping in FOR_EACH**: Enhanced iteration scope for state functions
+
 ## v1.0.0
 
 ### Added
@@ -29,7 +68,7 @@
 
 ### Changed
 - Planner prompt strengthened for deterministic logic-first planning.
-- Planner examples are now correctly injected into the planning prompt.
+- Planner examples are now correctly injected into planning prompt.
 - Planner output is sanitized/normalized before execution:
   - Unknown actions are removed
   - Invalid/extra args are filtered

@@ -3,8 +3,9 @@ import path from "node:path";
 import os from "node:os";
 import { exec } from "node:child_process";
 import { promisify } from "node:util";
-import type { McpPreset, McpServer } from "../skills/skill-types.js";
-import { getPreset, getAllPresets, resolveEnvironmentVariables } from "./mcp-presets.js";
+import type { McpServer, McpPreset } from "../skills/skill-types.js";
+import { MCP_PRESETS, getPreset, getAllPresets, resolveEnvironmentVariables } from "./mcp-presets.js";
+import { installPresetSkills } from "./preset-skills.js";
 
 const execAsync = promisify(exec);
 
@@ -42,6 +43,12 @@ export class McpInstaller {
 
       // Save updated config
       await this.saveMcpConfig(existingConfig);
+
+      // Install associated skills
+      const skillsResult = await installPresetSkills(presetName);
+      if (!skillsResult.success) {
+        console.warn(`Warning: Failed to install skills for preset ${presetName}: ${skillsResult.error}`);
+      }
 
       return { success: true };
     } catch (error) {
