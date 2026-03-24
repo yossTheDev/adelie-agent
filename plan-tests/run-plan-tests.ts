@@ -104,6 +104,15 @@ const assertFixture = (fixturePath: string): { ok: boolean; reason: string } => 
     return { ok: ok && containsExistingRef && containsNonExistingRef, reason: ok && containsExistingRef && containsNonExistingRef ? "DataPiping edge cases handled correctly" : "DataPiping edge cases failed" };
   }
 
+  if (baseName.startsWith("09-")) {
+    const resultFile = path.join(TEMP_ROOT, "state", "result.txt");
+    const ok = fs.existsSync(resultFile);
+    const content = ok ? fs.readFileSync(resultFile, "utf-8") : "";
+    const containsActualContent = content.includes("Hello from file 1") && content.includes("Hello from file 2");
+    const containsLiteralReference = content.includes("$$r1");
+    return { ok: ok && containsActualContent && !containsLiteralReference, reason: ok && containsActualContent && !containsLiteralReference ? "STATE functions inside FOR_EACH work correctly" : "STATE functions inside FOR_EACH failed - contains literal $$r1 reference" };
+  }
+
   return { ok: true, reason: "no explicit assertion" };
 };
 

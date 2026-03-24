@@ -102,6 +102,8 @@ export async function generatePlan(
     false,
   )) as string;
 
+  console.log(currentPlanRaw)
+
   let parsed: PlanResponse | null = null;
 
   try {

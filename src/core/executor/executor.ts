@@ -231,16 +231,21 @@ export const executeAction = async (
 
     for (let index = 0; index < items.length; index++) {
       const item = items[index];
+      const iterationScope: Record<string, any> = { ...localScope, item, index };
+      
       for (const t of template) {
-        const scoped = { ...localScope, item, index };
-        const resolvedTemplateId = resolveArguments(t.id, scoped);
-        const resolvedTemplateArgs = resolveArguments(t.args || {}, scoped);
+        const resolvedTemplateId = resolveArguments(t.id, iterationScope);
+        const resolvedTemplateArgs = resolveArguments(t.args || {}, iterationScope);
         const cloned: Intent = {
           ...t,
           args: resolvedTemplateArgs,
           id: `${intent.id}_${String(resolvedTemplateId)}_${index}`,
         };
-        const nestedResult = await executeAction(cloned, debug, scoped);
+        const nestedResult = await executeAction(cloned, debug, iterationScope);
+        
+        // Store the result in iteration scope for next steps in same iteration
+        iterationScope[t.id] = nestedResult.result;
+        
         if (!nestedResult.success) {
           return {
             id: intent.id,
