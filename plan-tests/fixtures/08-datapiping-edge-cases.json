@@ -1,0 +1,84 @@
+{
+  "name": "DataPiping edge cases and error handling",
+  "plan": [
+    {
+      "id": "step1",
+      "action": "STATE_SET",
+      "args": {
+        "key": "test_key",
+        "content": "test_value"
+      }
+    },
+    {
+      "id": "step2",
+      "action": "STATE_GET",
+      "args": {
+        "key": "test_key"
+      }
+    },
+    {
+      "id": "step3",
+      "action": "CREATE_FILE",
+      "args": {
+        "path": "__ROOT__\\edge\\existing-ref.txt",
+        "content": "Referencing existing step: $$step2"
+      }
+    },
+    {
+      "id": "step4",
+      "action": "CREATE_FILE",
+      "args": {
+        "path": "__ROOT__\\edge\\non-existing-ref.txt",
+        "content": "Referencing non-existing step: $$nonexistent"
+      }
+    },
+    {
+      "id": "step5",
+      "action": "READ_FILE",
+      "args": {
+        "path": "__ROOT__\\edge\\existing-ref.txt"
+      }
+    },
+    {
+      "id": "step6",
+      "action": "READ_FILE",
+      "args": {
+        "path": "__ROOT__\\edge\\non-existing-ref.txt"
+      }
+    },
+    {
+      "id": "step7",
+      "action": "CONTAINS",
+      "args": {
+        "data": "$$step5",
+        "value": "test_value"
+      }
+    },
+    {
+      "id": "step8",
+      "action": "CONTAINS",
+      "args": {
+        "data": "$$step6",
+        "value": "$$nonexistent"
+      }
+    },
+    {
+      "id": "step9",
+      "action": "IF",
+      "args": {
+        "condition": "$$step7",
+        "then": [
+          {
+            "id": "success_step",
+            "action": "CREATE_FILE",
+            "args": {
+              "path": "__ROOT__\\edge\\final-success.txt",
+              "content": "All DataPiping tests passed. Existing ref: $$step5. Non-existing ref: $$step6"
+            }
+          }
+        ],
+        "else": []
+      }
+    }
+  ]
+}

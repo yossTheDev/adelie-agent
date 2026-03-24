@@ -1,0 +1,89 @@
+{
+  "name": "Comprehensive state functions test",
+  "plan": [
+    {
+      "id": "test_set",
+      "action": "STATE_SET",
+      "args": {
+        "key": "test_buffer",
+        "content": "initial_value"
+      }
+    },
+    {
+      "id": "test_append_1",
+      "action": "STATE_APPEND", 
+      "args": {
+        "key": "test_buffer",
+        "content": "appended_1"
+      }
+    },
+    {
+      "id": "test_append_2",
+      "action": "STATE_APPEND",
+      "args": {
+        "key": "test_buffer", 
+        "content": "appended_2"
+      }
+    },
+    {
+      "id": "get_buffer",
+      "action": "STATE_GET",
+      "args": {
+        "key": "test_buffer"
+      }
+    },
+    {
+      "id": "verify_content",
+      "action": "CONTAINS",
+      "args": {
+        "data": "$$get_buffer",
+        "value": "appended_2"
+      }
+    },
+    {
+      "id": "create_second_buffer",
+      "action": "STATE_SET",
+      "args": {
+        "key": "second_buffer",
+        "content": "second_value"
+      }
+    },
+    {
+      "id": "get_both_buffers",
+      "action": "STATE_GET",
+      "args": {
+        "key": "second_buffer"
+      }
+    },
+    {
+      "id": "clear_first",
+      "action": "STATE_CLEAR",
+      "args": {
+        "key": "test_buffer"
+      }
+    },
+    {
+      "id": "verify_cleared",
+      "action": "STATE_GET",
+      "args": {
+        "key": "test_buffer"
+      }
+    },
+    {
+      "id": "final_check",
+      "action": "EQUALS",
+      "args": {
+        "a": "$$verify_cleared",
+        "b": ""
+      }
+    },
+    {
+      "id": "create_report",
+      "action": "CREATE_FILE",
+      "args": {
+        "path": "__ROOT__\\state\\state-report.txt",
+        "content": "State test completed. First buffer cleared: $$final_check. Second buffer: $$get_both_buffers"
+      }
+    }
+  ]
+}

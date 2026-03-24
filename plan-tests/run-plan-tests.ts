@@ -69,6 +69,41 @@ const assertFixture = (fixturePath: string): { ok: boolean; reason: string } => 
     return { ok, reason: ok ? "state actions produced expected condition" : "state actions failed" };
   }
 
+  if (baseName.startsWith("05-")) {
+    const successFile = path.join(TEMP_ROOT, "datapiping", "success.txt");
+    const userProfile = path.join(TEMP_ROOT, "datapiping", "user-profile.txt");
+    const ok = fs.existsSync(successFile) && fs.existsSync(userProfile);
+    const content = ok ? fs.readFileSync(successFile, "utf-8") : "";
+    const containsReference = content.includes("DataPiping test passed");
+    return { ok: ok && containsReference, reason: ok && containsReference ? "complex DataPiping with $$id references works" : "complex DataPiping failed" };
+  }
+
+  if (baseName.startsWith("06-")) {
+    const resultFile = path.join(TEMP_ROOT, "nested", "result.txt");
+    const ok = fs.existsSync(resultFile);
+    const content = ok ? fs.readFileSync(resultFile, "utf-8") : "";
+    const containsAllItems = content.includes("apple") && content.includes("banana") && content.includes("cherry");
+    return { ok: ok && containsAllItems, reason: ok && containsAllItems ? "nested DataPiping with loops works" : "nested DataPiping failed" };
+  }
+
+  if (baseName.startsWith("07-")) {
+    const reportFile = path.join(TEMP_ROOT, "state", "state-report.txt");
+    const ok = fs.existsSync(reportFile);
+    const content = ok ? fs.readFileSync(reportFile, "utf-8") : "";
+    const containsSecondBuffer = content.includes("second_value");
+    const containsClearedCheck = content.includes("First buffer cleared: TRUE");
+    return { ok: ok && containsSecondBuffer && containsClearedCheck, reason: ok && containsSecondBuffer && containsClearedCheck ? "comprehensive state functions work" : "comprehensive state functions failed" };
+  }
+
+  if (baseName.startsWith("08-")) {
+    const finalSuccess = path.join(TEMP_ROOT, "edge", "final-success.txt");
+    const ok = fs.existsSync(finalSuccess);
+    const content = ok ? fs.readFileSync(finalSuccess, "utf-8") : "";
+    const containsExistingRef = content.includes("test_value");
+    const containsNonExistingRef = content.includes("$$nonexistent");
+    return { ok: ok && containsExistingRef && containsNonExistingRef, reason: ok && containsExistingRef && containsNonExistingRef ? "DataPiping edge cases handled correctly" : "DataPiping edge cases failed" };
+  }
+
   return { ok: true, reason: "no explicit assertion" };
 };
 

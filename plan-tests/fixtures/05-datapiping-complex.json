@@ -1,0 +1,69 @@
+{
+  "name": "Complex DataPiping test with $$id references",
+  "plan": [
+    {
+      "id": "step1",
+      "action": "STATE_SET",
+      "args": {
+        "key": "user_data",
+        "content": "John Doe"
+      }
+    },
+    {
+      "id": "step2", 
+      "action": "STATE_APPEND",
+      "args": {
+        "key": "user_data",
+        "content": "john.doe@example.com"
+      }
+    },
+    {
+      "id": "step3",
+      "action": "STATE_GET",
+      "args": {
+        "key": "user_data"
+      }
+    },
+    {
+      "id": "step4",
+      "action": "CREATE_FILE",
+      "args": {
+        "path": "__ROOT__\\datapiping\\user-profile.txt",
+        "content": "User Profile: $$step3"
+      }
+    },
+    {
+      "id": "step5",
+      "action": "READ_FILE",
+      "args": {
+        "path": "__ROOT__\\datapiping\\user-profile.txt"
+      }
+    },
+    {
+      "id": "step6",
+      "action": "CONTAINS",
+      "args": {
+        "data": "$$step5",
+        "value": "John Doe"
+      }
+    },
+    {
+      "id": "step7",
+      "action": "IF",
+      "args": {
+        "condition": "$$step6",
+        "then": [
+          {
+            "id": "success_file",
+            "action": "CREATE_FILE",
+            "args": {
+              "path": "__ROOT__\\datapiping\\success.txt",
+              "content": "DataPiping test passed - referenced step3 content: $$step3"
+            }
+          }
+        ],
+        "else": []
+      }
+    }
+  ]
+}

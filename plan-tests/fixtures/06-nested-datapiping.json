@@ -1,0 +1,60 @@
+{
+  "name": "Nested DataPiping with loops and conditions",
+  "plan": [
+    {
+      "id": "setup",
+      "action": "STATE_SET",
+      "args": {
+        "key": "items",
+        "content": "apple,banana,cherry"
+      }
+    },
+    {
+      "id": "get_items",
+      "action": "STATE_GET", 
+      "args": {
+        "key": "items"
+      }
+    },
+    {
+      "id": "process_items",
+      "action": "FOR_EACH",
+      "args": {
+        "items": "$$get_items",
+        "template": [
+          {
+            "id": "process_$$item",
+            "action": "STATE_APPEND",
+            "args": {
+              "key": "processed_items",
+              "content": "Processed: $$item"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "id": "get_processed",
+      "action": "STATE_GET",
+      "args": {
+        "key": "processed_items"
+      }
+    },
+    {
+      "id": "check_count",
+      "action": "CONTAINS",
+      "args": {
+        "data": "$$get_processed",
+        "value": "Processed: cherry"
+      }
+    },
+    {
+      "id": "final_output",
+      "action": "CREATE_FILE",
+      "args": {
+        "path": "__ROOT__\\nested\\result.txt",
+        "content": "Processing complete. All items: $$get_processed. Contains cherry: $$check_count"
+      }
+    }
+  ]
+}
