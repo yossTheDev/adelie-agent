@@ -1,0 +1,16 @@
+{
+  "name": "Skills integration test",
+  "plan": [
+    {
+      "id": "test_skill",
+      "action": "USE_SKILL",
+      "args": {
+        "skill": "file-analyzer",
+        "inputs": {
+          "path": "__ROOT__\\state",
+          "pattern": "\\.txt$"
+        }
+      }
+    }
+  ]
+}

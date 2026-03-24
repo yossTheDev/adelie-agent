@@ -3,9 +3,10 @@ import { getExamples } from "./examples.js";
 export const getPlannerPromt = (args: {
   actionsText: string;
   mcpToolsText: string;
+  skillsText?: string;
   userInput: string;
 }) => {
-  const { actionsText, mcpToolsText, userInput } = args;
+  const { actionsText, mcpToolsText, skillsText, userInput } = args;
   return `
 You are the Strategic Planner for YI Agent. Convert the user request into a precise, deterministic sequence of actions.
 
@@ -26,7 +27,10 @@ ${actionsText}
 AVAILABLE MCP TOOLS (runtime-discovered):
 ${mcpToolsText}
 
-USER INPUT:
+${skillsText ? `AVAILABLE SKILLS:
+${skillsText}
+
+` : ""}USER INPUT:
 ${userInput}
 
 STRICT ARCHITECTURE RULES:

@@ -2,6 +2,7 @@ import { ACTION_ARGS, ACTION_DESCRIPTIONS } from "../actions/actions.js";
 import { buildMcpPlannerToolsText } from "../config/mcp-config.js";
 import { callOllama } from "../llm/llm.js";
 import { getPlannerPromt } from "./prompt.js";
+import { SkillLoader } from "../skills/skill-loader.js";
 
 interface PlanAction {
   id: string;
@@ -79,11 +80,53 @@ const sanitizePlan = (raw: unknown): PlanAction[] => {
   return safe;
 };
 
+const expandSkillsInPlan = (plan: PlanAction[]): PlanAction[] => {
+  const expandedPlan: PlanAction[] = [];
+  
+  for (const step of plan) {
+    if (step.action === "USE_SKILL") {
+      try {
+        const skillName = step.args?.skill;
+        const skillInputs = step.args?.inputs || {};
+        
+        if (!skillName) {
+          console.warn("USE_SKILL action missing 'skill' parameter");
+          continue;
+        }
+        
+        const expandedTemplate = SkillLoader.expandSkillTemplate(skillName, skillInputs);
+        if (expandedTemplate) {
+          // Add expanded steps with unique IDs
+          for (let i = 0; i < expandedTemplate.length; i++) {
+            const templateStep = expandedTemplate[i];
+            expandedPlan.push({
+              ...templateStep,
+              id: `${step.id}_${templateStep.id}_${i}`
+            });
+          }
+        } else {
+          console.warn(`Failed to expand skill: ${skillName}`);
+        }
+      } catch (error) {
+        console.error(`Error expanding skill in step ${step.id}:`, error);
+      }
+    } else {
+      expandedPlan.push(step);
+    }
+  }
+  
+  return expandedPlan;
+};
+
 export async function generatePlan(
   userInput: string,
   debug: boolean = false,
   isWorker: boolean = false,
 ): Promise<PlanAction[]> {
+  // Load skills for context
+  await SkillLoader.loadAllSkills();
+  const skillsText = SkillLoader.getSkillsForPlanner();
+
   const actionsInfo = Object.entries(ACTION_ARGS).map(([action, args]) => {
     const argsStr = args.length > 0 ? `Args: [${args.join(", ")}]` : "No args";
     const desc = ACTION_DESCRIPTIONS[action] || "No description available";
@@ -94,7 +137,7 @@ export async function generatePlan(
   const mcpToolsText = buildMcpPlannerToolsText();
 
   // --- PHASE 1: GENERATION PROMPT ---
-  const basePrompt = getPlannerPromt({ actionsText, mcpToolsText, userInput });
+  const basePrompt = getPlannerPromt({ actionsText, mcpToolsText, skillsText, userInput });
 
   let currentPlanRaw = (await callOllama(
     basePrompt,
@@ -120,6 +163,9 @@ export async function generatePlan(
     return [];
   }
 
+  // Expand skills in the plan
+  const expandedPlan = expandSkillsInPlan(parsed.plan);
+
   if (debug) {
     console.log("\n[DEBUG] FINAL LLM PLAN:");
     console.log(currentPlanRaw);
@@ -128,7 +174,7 @@ export async function generatePlan(
   try {
     const cleanRaw = currentPlanRaw.replace(/```json|```/g, "").trim();
     const parsed = JSON.parse(cleanRaw) as PlanResponse;
-    return sanitizePlan(parsed.plan || []);
+    return sanitizePlan(expandedPlan);
   } catch (e) {
     if (debug) console.error("[ERROR] PLANNER PARSE FAILED:", e);
     return [];

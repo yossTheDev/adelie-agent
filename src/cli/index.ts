@@ -24,6 +24,8 @@ import {
   updateMcpServerEnv,
 } from "../core/config/mcp-config.js";
 import { listMcpTools } from "../core/mcp/mcp-runtime.js";
+import { SkillLoader } from "../core/skills/skill-loader.js";
+import { McpInstaller } from "../core/mcp/mcp-installer.js";
 
 const rl = readline.createInterface({
   input: process.stdin,
@@ -202,52 +204,24 @@ const handleMcpCommand = async (args: string[]) => {
     const [preset] = rest;
     if (!preset) {
       console.log(
-        chalk.yellow("Usage: yi mcp install-preset <github|notion>"),
+        chalk.yellow("Usage: yi mcp install-preset <preset-name>"),
       );
+      console.log(chalk.yellow("Available presets: github, web-search, docs, file-index, database, pdf, shell-system, complete"));
       return;
     }
 
-    if (preset === "github") {
-      const server = installMcpServer({
-        name: "github",
-        command: "npx",
-        commandArgs: ["-y", "@modelcontextprotocol/server-github"],
-        tools: [],
-        env: {
-          GITHUB_TOKEN: "",
-        },
-        packageName: "@modelcontextprotocol/server-github",
-      });
-      console.log(
-        chalk.green(
-          `Installed preset '${preset}'. Configure token with: yi mcp set-env github GITHUB_TOKEN <token>`,
-        ),
-      );
-      console.log(chalk.gray(`Server: ${server.name}`));
-      return;
+    const spinner = ora(`Installing MCP preset '${preset}'...`).start();
+    try {
+      const result = await McpInstaller.installPreset(preset);
+      if (result.success) {
+        spinner.succeed(chalk.green(`MCP preset '${preset}' installed successfully.`));
+        console.log(chalk.yellow("Note: Some MCP servers may require environment variables to be set."));
+      } else {
+        spinner.fail(chalk.red(`Installation failed: ${result.error}`));
+      }
+    } catch (error) {
+      spinner.fail(chalk.red(`Installation failed: ${String(error)}`));
     }
-
-    if (preset === "notion") {
-      const server = installMcpServer({
-        name: "notion",
-        command: "npx",
-        commandArgs: ["-y", "@modelcontextprotocol/server-notion"],
-        tools: [],
-        env: {
-          NOTION_API_KEY: "",
-        },
-        packageName: "@modelcontextprotocol/server-notion",
-      });
-      console.log(
-        chalk.green(
-          `Installed preset '${preset}'. Configure key with: yi mcp set-env notion NOTION_API_KEY <key>`,
-        ),
-      );
-      console.log(chalk.gray(`Server: ${server.name}`));
-      return;
-    }
-
-    console.log(chalk.yellow("Unknown preset. Use github or notion."));
     return;
   }
 
@@ -314,6 +288,96 @@ const handleMcpCommand = async (args: string[]) => {
   }
 
   console.log(chalk.yellow("Unknown MCP command."));
+};
+
+const handleSkillsCommand = async (args: string[]) => {
+  const [subcommand, ...rest] = args;
+
+  if (!subcommand || subcommand === "list") {
+    await SkillLoader.loadAllSkills();
+    const skills = SkillLoader.getAllSkills();
+    
+    console.log(chalk.cyanBright("Available skills:"));
+    if (skills.length === 0) {
+      console.log(chalk.gray("  No skills installed."));
+      console.log(chalk.yellow("  Install skills with: yi skills install <file.skill.md>"));
+    } else {
+      for (const skill of skills) {
+        console.log(
+          `- ${chalk.magenta(skill.name)}: ${chalk.white(skill.description)}`,
+        );
+        console.log(`  When to use: ${skill.whenToUse.join(", ")}`);
+        if (skill.mcpServer) {
+          console.log(`  Requires MCP: ${skill.mcpServer}`);
+        }
+        console.log("");
+      }
+    }
+    return;
+  }
+
+  if (subcommand === "install") {
+    const [filePath] = rest;
+    if (!filePath) {
+      console.log(chalk.yellow("Usage: yi skills install <file.skill.md>"));
+      return;
+    }
+
+    const spinner = ora("Installing skill...").start();
+    try {
+      const result = await SkillLoader.installSkillFile(filePath);
+      if (result.success) {
+        spinner.succeed(chalk.green(`Skill installed successfully.`));
+      } else {
+        spinner.fail(chalk.red(`Installation failed: ${result.error}`));
+      }
+    } catch (error) {
+      spinner.fail(chalk.red(`Installation failed: ${String(error)}`));
+    }
+    return;
+  }
+
+  if (subcommand === "remove") {
+    const [skillName] = rest;
+    if (!skillName) {
+      console.log(chalk.yellow("Usage: yi skills remove <skill-name>"));
+      return;
+    }
+
+    const spinner = ora("Removing skill...").start();
+    try {
+      const result = await SkillLoader.removeSkill(skillName);
+      if (result.success) {
+        spinner.succeed(chalk.green(`Skill '${skillName}' removed successfully.`));
+      } else {
+        spinner.fail(chalk.red(`Removal failed: ${result.error}`));
+      }
+    } catch (error) {
+      spinner.fail(chalk.red(`Removal failed: ${String(error)}`));
+    }
+    return;
+  }
+
+  if (subcommand === "validate") {
+    const spinner = ora("Validating skills...").start();
+    try {
+      const result = await SkillLoader.validateAllSkills();
+      if (result.valid) {
+        spinner.succeed(chalk.green("All skills are valid."));
+      } else {
+        spinner.fail(chalk.red("Validation errors found:"));
+        for (const error of result.errors) {
+          console.log(chalk.red(`  - ${error}`));
+        }
+      }
+    } catch (error) {
+      spinner.fail(chalk.red(`Validation failed: ${String(error)}`));
+    }
+    return;
+  }
+
+  console.log(chalk.yellow("Unknown skills command."));
+  console.log(chalk.yellow("Available commands: list, install, remove, validate"));
 };
 
 const startInteractiveCli = async () => {
@@ -417,6 +481,12 @@ const main = async () => {
 
   if (command === "mcp") {
     await handleMcpCommand(args);
+    rl.close();
+    return;
+  }
+
+  if (command === "skills") {
+    await handleSkillsCommand(args);
     rl.close();
     return;
   }
