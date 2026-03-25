@@ -1,6 +1,6 @@
 # Changelog
 
-## v1.2.0
+## v0.1.2
 
 ### Added
 - **Dual Operation Modes**: Implemented ask and planner modes for optimized user experience
@@ -38,7 +38,7 @@
 - **Test Compatibility**: Updated all memory-related tests to work with new system
 - **Documentation Alignment**: Updated examples and best practices for new memory model
 
-## v1.1.0
+## v0.1.1
 
 ### Added
 - **MCP Presets + Skills System**: Complete integration of Model Context Protocol with Skills
@@ -77,7 +77,7 @@
 - **TypeScript errors**: Fixed type imports and lint issues
 - **DataPiping in FOR_EACH**: Enhanced iteration scope for state functions
 
-## v1.0.0
+## v0.1.0
 
 ### Added
 - Deterministic control-flow support improvements in executor:

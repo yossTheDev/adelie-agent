@@ -212,7 +212,7 @@ const getBanner = async (mode: string = "planner"): Promise<string> => {
 
 const showHelp = (): void => {
   const helpText = `
-▲ Adelie v1.0.0 - Your Local Assistant
+▲ Adelie v0.1.2 - Your Local Assistant
 
 USAGE:
   adelie [OPTIONS] [COMMAND] [QUERY]
