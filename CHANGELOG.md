@@ -1,5 +1,36 @@
 # Changelog
 
+## v0.1.3
+
+### Added
+- **HTTP/HTTPS Transport Support for MCP**: Complete implementation of HTTP transport for Model Context Protocol servers
+  - New transport type: `http` alongside existing `stdio` transport
+  - Authentication support: `bearer` and `basic` auth methods
+  - Custom headers support for HTTP requests
+  - Environment variable replacement in URLs and tokens
+- **Enhanced MCP Server Configuration**:
+  - Extended `McpServerConfig` and `McpServer` types with HTTP-specific fields
+  - Added `type`, `url`, `headers`, and `auth` properties
+  - Backward compatibility maintained for existing STDIO servers
+- **Updated MCP Client Infrastructure**:
+  - `McpClientManager`: Added `StreamableHTTPClientTransport` integration
+  - `mcp-runtime`: Enhanced to handle both transport types dynamically
+  - Automatic transport selection based on server configuration
+- **Improved MCP Installer**:
+  - Updated to support HTTP server installation
+  - Enhanced validation for both transport types
+  - Better error handling for missing required fields
+
+### Changed
+- **MCP Configuration Schema**: Extended to support HTTP transport while maintaining STDIO compatibility
+- **Type Safety**: Improved TypeScript types for mixed transport environments
+- **Error Handling**: Better validation and error messages for HTTP configuration
+
+### Fixed
+- **TypeScript Compilation**: Resolved type errors in HTTP transport implementation
+- **Environment Variable Handling**: Proper filtering of undefined values in environment objects
+- **CLI Compatibility**: Fixed server listing to handle both transport types
+
 ## v0.1.2
 
 ### Added
