@@ -1,5 +1,44 @@
 # Changelog
 
+## v0.1.4
+
+### Added
+- **Conversation Memory System**: Complete implementation of persistent conversation history
+  - Configurable conversation length via `conversation_memory_length` (default: 10)
+  - Automatic storage of user inputs and agent responses with timestamps
+  - Support for both ask and planner modes with execution context
+  - Persistent storage in `~/.adelie/conversation.json`
+- **Enhanced Conversation Flow**: Natural, continuous conversation experience
+  - Previous conversation context automatically included in planner and response phases
+  - Multi-language support without hardcoded language-specific patterns
+  - Context-aware responses that reference previous exchanges naturally
+- **Conversation Management CLI**: New `adelie conversation` command
+  - `adelie conversation list` - View recent conversation history
+  - `adelie conversation clear` - Clear all conversation history
+  - `adelie conversation stats` - Show conversation statistics
+- **Improved Response Prompts**: Enhanced for natural conversation
+  - Removed rigid "CRITICAL" and "MUST USE" language
+  - Added conversational guidelines for continuity and personalization
+  - Support for natural language patterns in any language
+  - Emphasis on continuous conversation over transactional Q&A
+- **Universal Memory Rules**: Language-agnostic memory detection
+  - Memory action detection works in any language
+  - Expanded keyword variations: "memoriza", "grabar", "dime sobre mí", "qué sabes de mí"
+  - Removed language-specific hardcoded examples
+
+### Changed
+- **Agent Configuration**: Extended with `conversation_memory_length` parameter
+- **Memory Integration**: Both planner and response phases now use conversation history
+- **CLI Behavior**: Interactive mode (`adelie`) now properly calls `startInteractiveCli()`
+- **Response Style**: More natural, varied, and personalized responses
+- **Conversation History Format**: Enhanced with better context and longer previews (300 chars)
+
+### Fixed
+- **Missing Interactive Mode**: Fixed `startInteractiveCli()` not being called when no arguments provided
+- **Language-Specific Rules**: Replaced hardcoded Spanish examples with universal patterns
+- **Repetitive Responses**: Added guidelines for response variation and natural language
+- **Memory Context Integration**: Fixed conversation history not being properly utilized
+
 ## v0.1.3
 
 ### Added

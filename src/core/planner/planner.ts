@@ -5,11 +5,12 @@ import { getPlannerPromt } from "./prompt.js";
 import { SkillLoader } from "../skills/skill-loader.js";
 import { getMemoryStore } from "../memory/memory-store.js";
 import { buildMcpPlannerToolsText } from "../config/mcp-config.js";
+import { getConversationMemory } from "../conversation/conversation-memory.js";
 
 function formatPlannerMemoryValueWithInstruction(key: string, value: any, source?: string, instruction?: string): string {
   const sourceInfo = source ? ` (source: ${source})` : "";
   const instructionInfo = instruction ? `\n  📋 Context instruction: "${instruction}"` : "";
-  
+
   if (typeof value === 'string') {
     return `📍 ${key}: "${value}"${sourceInfo}${instructionInfo}`;
   } else if (typeof value === 'object' && value !== null) {
@@ -30,7 +31,7 @@ function formatPlannerMemoryValueWithInstruction(key: string, value: any, source
 
 function formatPlannerMemoryValue(key: string, value: any, source?: string): string {
   const sourceInfo = source ? ` (source: ${source})` : "";
-  
+
   if (typeof value === 'string') {
     return `📍 ${key}: "${value}"${sourceInfo}`;
   } else if (typeof value === 'object' && value !== null) {
@@ -113,7 +114,7 @@ const sanitizePlan = (raw: unknown): PlanAction[] => {
     const filteredArgs: Record<string, any> = {};
     for (const [key, value] of Object.entries(args)) {
       // Handle optional arguments (those ending with ?)
-      const isOptional = Array.from(allowedArgs).some(arg => 
+      const isOptional = Array.from(allowedArgs).some(arg =>
         arg === key || arg.replace(/\?$/, '') === key
       );
       if (isOptional) {
@@ -132,52 +133,58 @@ const sanitizePlan = (raw: unknown): PlanAction[] => {
 };
 
 let plannerLoadedMemory: string = "";
+let plannerLoadedConversation: string = "";
 
 const loadPlannerMemory = async (): Promise<void> => {
   try {
     const memoryStore = getMemoryStore();
     const allMemory = await memoryStore.list();
-    
+
     if (allMemory.length === 0) {
       plannerLoadedMemory = "";
-      return;
+    } else {
+      const memoryTexts: string[] = [];
+      for (const entry of allMemory) {
+        const value = await memoryStore.get(entry.key);
+        const formattedValue = formatPlannerMemoryValueWithInstruction(entry.key, value, entry.source, entry.instruction);
+        memoryTexts.push(formattedValue);
+      }
+
+      plannerLoadedMemory = memoryTexts.length > 0
+        ? `Planner Memory Context (use for decision making):\n${memoryTexts.join("\n")}\n`
+        : "";
     }
 
-    const memoryTexts: string[] = [];
-    for (const entry of allMemory) {
-      const value = await memoryStore.get(entry.key);
-      const formattedValue = formatPlannerMemoryValueWithInstruction(entry.key, value, entry.source, entry.instruction);
-      memoryTexts.push(formattedValue);
-    }
-
-    plannerLoadedMemory = memoryTexts.length > 0
-      ? `Planner Memory Context (use for decision making):\n${memoryTexts.join("\n")}\n`
-      : "";
+    // Load conversation history
+    const conversationMemory = getConversationMemory();
+    const conversationHistory = await conversationMemory.getFormattedHistory();
+    plannerLoadedConversation = conversationHistory || "";
   } catch {
     plannerLoadedMemory = "";
+    plannerLoadedConversation = "";
   }
 };
 
 export { loadPlannerMemory };
 
 const getPlannerMemoryContext = (userInput: string): string => {
-  return plannerLoadedMemory;
+  return plannerLoadedMemory + plannerLoadedConversation;
 };
 
 const expandSkillsInPlan = (plan: PlanAction[]): PlanAction[] => {
   const expandedPlan: PlanAction[] = [];
-  
+
   for (const step of plan) {
     if (step.action === "USE_SKILL") {
       try {
         const skillName = step.args?.skill;
         const skillInputs = step.args?.inputs || {};
-        
+
         if (!skillName) {
           console.warn("USE_SKILL action missing 'skill' parameter");
           continue;
         }
-        
+
         const expandedTemplate = SkillLoader.expandSkillTemplate(skillName, skillInputs);
         if (expandedTemplate) {
           // Add expanded steps with unique IDs
@@ -198,7 +205,7 @@ const expandSkillsInPlan = (plan: PlanAction[]): PlanAction[] => {
       expandedPlan.push(step);
     }
   }
-  
+
   return expandedPlan;
 };
 
@@ -209,7 +216,7 @@ export async function generatePlan(
 ): Promise<PlanAction[]> {
   // CRITICAL: Load memory BEFORE planning
   await loadPlannerMemory();
-  
+
   // Load skills for context
   await SkillLoader.loadAllSkills();
   const skillsText = SkillLoader.getSkillsForPlanner();
@@ -224,7 +231,7 @@ export async function generatePlan(
   });
 
   const actionsText = actionsInfo.join("\n");
-  
+
   // Build MCP tools text using unified config system
   const mcpToolsText = await buildMcpPlannerToolsText();
 

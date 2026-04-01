@@ -8,6 +8,7 @@ export interface AgentConfig {
   debug: boolean;
   max_loop_iterations: number;
   language: string;
+  conversation_memory_length: number;
 }
 
 const DEFAULT_CONFIG: AgentConfig = {
@@ -16,6 +17,7 @@ const DEFAULT_CONFIG: AgentConfig = {
   debug: false,
   max_loop_iterations: 1000,
   language: "auto",
+  conversation_memory_length: 10,
 };
 
 const CONFIG_DIR = path.join(os.homedir(), ".adelie");
@@ -47,6 +49,10 @@ export const readAgentConfig = (): AgentConfig => {
         typeof parsed.max_loop_iterations === "number"
           ? parsed.max_loop_iterations
           : DEFAULT_CONFIG.max_loop_iterations,
+      conversation_memory_length:
+        typeof parsed.conversation_memory_length === "number"
+          ? parsed.conversation_memory_length
+          : DEFAULT_CONFIG.conversation_memory_length,
     };
   } catch {
     return { ...DEFAULT_CONFIG };

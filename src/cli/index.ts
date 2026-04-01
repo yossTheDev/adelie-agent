@@ -29,6 +29,7 @@ import { getMemoryStore } from "../core/memory/memory-store.js";
 import { loadAllMemory } from "../core/response/response.js";
 import { loadPlannerMemory } from "../core/planner/planner.js";
 import { callOllama } from "../core/llm/llm.js";
+import { getConversationMemory } from "../core/conversation/conversation-memory.js";
 
 const rl = readline.createInterface({
   input: process.stdin,
@@ -53,7 +54,7 @@ const formatStepArgs = (args: Record<string, unknown>): string => {
 const renderExecutionResult = (result: any, stepIndex: number): void => {
   const status = result.success ? "✅" : "❌";
   const title = `Step ${stepIndex + 1} ${status}`;
-  
+
   const content = [
     `Action: ${result.action}`,
     `Success: ${result.success}`,
@@ -74,7 +75,7 @@ const renderExecutionResult = (result: any, stepIndex: number): void => {
 const renderSummary = (totalSteps: number, completedSteps: number, results: any[]): void => {
   const successCount = results.filter(r => r.success).length;
   const failureCount = results.length - successCount;
-  
+
   const content = [
     `📊 Execution Summary:`,
     `  • Total Steps: ${totalSteps}`,
@@ -128,7 +129,7 @@ const getBanner = async (mode: string = "planner"): Promise<string> => {
   const { McpInstaller } = await import("../core/mcp/mcp-installer.js");
   const mcpServers = await McpInstaller.listInstalledServers();
   const mcpCount = mcpServers.length;
-  
+
   // Contar herramientas MCP (básico, ya que no tenemos herramientas reales aún)
   let mcpToolsCount = 0;
   for (const serverName of mcpServers) {
@@ -146,13 +147,13 @@ const getBanner = async (mode: string = "planner"): Promise<string> => {
       description: "Direct conversation - perfect for questions and chat"
     },
     planner: {
-      color: "🔵", 
+      color: "🔵",
       title: "Planner Mode",
       description: "Planning & execution - perfect for complex tasks"
     },
     auto: {
       color: "🟡",
-      title: "Auto Mode", 
+      title: "Auto Mode",
       description: "Intelligent mode selection based on your query"
     }
   };
@@ -231,6 +232,7 @@ COMMANDS:
   mcp                 Manage MCP servers
   skills              Manage skills
   memory              Manage memory
+  conversation        Manage conversation history
 
 MODES:
   --ask               Direct conversation mode (for simple questions)
@@ -340,10 +342,10 @@ const handleMcpCommand = async (args: string[]) => {
     const commandArgs = rawArgs.filter((a) => !a.startsWith("--tools="));
     const tools = toolFlag
       ? toolFlag
-          .replace("--tools=", "")
-          .split(",")
-          .map((t) => t.trim())
-          .filter(Boolean)
+        .replace("--tools=", "")
+        .split(",")
+        .map((t) => t.trim())
+        .filter(Boolean)
       : [];
 
     const server = installMcpServer({ name, command, commandArgs, tools });
@@ -419,16 +421,16 @@ const handleMcpCommand = async (args: string[]) => {
     try {
       const status = await McpInstaller.getConnectionStatus();
       console.log("🔌 MCP Server Connection Status:");
-      
+
       for (const [serverName, isConnected] of Object.entries(status)) {
         const statusIcon = isConnected ? "✅" : "❌";
         const statusText = isConnected ? "Connected" : "Disconnected";
         console.log(`  ${statusIcon} ${serverName}: ${statusText}`);
       }
-      
+
       const connectedCount = Object.values(status).filter(Boolean).length;
       const totalCount = Object.keys(status).length;
-      
+
       console.log(`\n📊 Summary: ${connectedCount}/${totalCount} servers connected`);
     } catch (error) {
       console.error(`❌ Error getting connection status: ${String(error)}`);
@@ -452,15 +454,15 @@ const handleMcpCommand = async (args: string[]) => {
       console.log("Usage: yi mcp test <server>");
       return;
     }
-    
+
     try {
       console.log(`🧪 Testing connection to MCP server: ${name}`);
       const tools = await McpInstaller.syncTools(name);
-      
+
       if (tools.success) {
         console.log(`✅ Connection successful!`);
         console.log(`📋 Available tools: ${tools.tools ? tools.tools.length : 0}`);
-        
+
         if (tools.tools && tools.tools.length > 0) {
           console.log("\nAvailable tools:");
           tools.tools.forEach(tool => {
@@ -510,7 +512,7 @@ const handleSkillsCommand = async (args: string[]) => {
   if (!subcommand || subcommand === "list") {
     await SkillLoader.loadAllSkills();
     const skills = SkillLoader.getAllSkills();
-    
+
     console.log("Available skills:");
     if (skills.length === 0) {
       console.log("  No skills installed.");
@@ -636,7 +638,7 @@ const handleMemoryCommand = async (args: string[]) => {
     let value = "";
     let instruction = "";
     let instructionFound = false;
-    
+
     for (let i = 0; i < restArgs.length; i++) {
       if (restArgs[i] === "--instruction" && i + 1 < restArgs.length) {
         instruction = restArgs[i + 1];
@@ -646,7 +648,7 @@ const handleMemoryCommand = async (args: string[]) => {
         value += (value ? " " : "") + restArgs[i];
       }
     }
-    
+
     try {
       // Try to parse as JSON first
       let parsedValue;
@@ -664,7 +666,7 @@ const handleMemoryCommand = async (args: string[]) => {
         source: "cli",
         instruction: instruction || undefined
       });
-      
+
       if (success) {
         console.log(`Set memory key '${key}'${instruction ? " with AI processing" : ""}`);
       } else {
@@ -749,6 +751,202 @@ const handleMemoryCommand = async (args: string[]) => {
   console.log("Note: Memory is automatically loaded and used in responses - no 'get' command needed");
 };
 
+const handleConversationCommand = async (args: string[]) => {
+  const [subcommand, ...rest] = args;
+  const conversationMemory = getConversationMemory();
+
+  if (!subcommand || subcommand === "list") {
+    try {
+      const entries = await conversationMemory.getRecentEntries();
+      console.log("Recent conversation history:");
+      if (entries.length === 0) {
+        console.log("  No conversation history found.");
+      } else {
+        for (let i = 0; i < entries.length; i++) {
+          const entry = entries[i];
+          const date = new Date(entry.timestamp).toLocaleString();
+          console.log(`\n[${i + 1}] ${date} (${entry.mode})`);
+          console.log(`User: ${entry.user_input}`);
+          const responsePreview = entry.agent_response.length > 100
+            ? entry.agent_response.substring(0, 100) + "..."
+            : entry.agent_response;
+          console.log(`Agent: ${responsePreview}`);
+        }
+      }
+    } catch (error) {
+      console.log(`Error listing conversation: ${String(error)}`);
+    }
+    return;
+  }
+
+  if (subcommand === "clear") {
+    try {
+      await conversationMemory.clear();
+      console.log("Cleared all conversation history");
+    } catch (error) {
+      console.log(`Error clearing conversation: ${String(error)}`);
+    }
+    return;
+  }
+
+  if (subcommand === "stats") {
+    try {
+      const stats = await conversationMemory.getStats();
+      console.log("Conversation statistics:");
+      console.log(`Total entries: ${stats.totalEntries}`);
+      console.log(`Total size: ${stats.totalSize} bytes`);
+      console.log(`Last updated: ${stats.lastUpdated ? new Date(stats.lastUpdated).toLocaleString() : "Never"}`);
+    } catch (error) {
+      console.log(`Error getting conversation stats: ${String(error)}`);
+    }
+    return;
+  }
+
+  console.log("Unknown conversation command.");
+  console.log("Available commands: list, clear, stats");
+};
+
+const detectModeWithLLM = async (query: string): Promise<"ask" | "planner"> => {
+  const prompt = `Analyze this user query and determine if it requires action planning or is just a conversation:
+
+Query: "${query}"
+
+Respond with ONLY "ask" if it's:
+- A simple question or conversation
+- Asking for information or explanation
+- Casual chat or greeting
+- Request for opinion or creative content
+
+Respond with ONLY "planner" if it's:
+- Request to create, delete, modify, or manipulate files/systems
+- Request to search, find, or locate specific items
+- Request to install, build, or execute commands
+- Any task that requires step-by-step execution
+- File system operations
+- External tool usage
+- Memory commands: "remember this", "save this", "store this", "recall", "forget", etc.
+- Personal information user wants to store
+- Requests to remember/recall information
+
+Your response (ask/planner):`;
+
+  try {
+    const config = readAgentConfig();
+    const response = await callOllama(prompt, config.model, false);
+    const result = response.toString().trim().toLowerCase();
+    return result.includes("planner") ? "planner" : "ask";
+  } catch {
+    // Fallback to simple heuristic if LLM fails
+    const actionWords = ["create", "delete", "modify", "update", "install", "build", "run", "execute", "search", "find", "list", "show"];
+    const memoryWords = ["remember", "save", "store", "recall", "forget", "guarda", "recuerda", "almacena"];
+    const hasActionWords = actionWords.some(word => query.toLowerCase().includes(word));
+    const hasMemoryWords = memoryWords.some(word => query.toLowerCase().includes(word));
+    return (hasActionWords || hasMemoryWords) ? "planner" : "ask";
+  }
+};
+
+const handleAskMode = async (query: string) => {
+  console.log("\nAdelie:\n");
+
+  const spinner = ora({ text: "Thinking...", color: "white" }).start();
+  let responseStarted = false;
+  let fullResponse = "";
+
+  try {
+    for await (const chunk of generateAskResponse(query)) {
+      if (!responseStarted) {
+        spinner.succeed("Response ready");
+        responseStarted = true;
+      }
+      if (chunk) {
+        process.stdout.write(chunk);
+        fullResponse += chunk;
+      }
+    }
+  } catch (error) {
+    if (!responseStarted) {
+      spinner.fail("Response failed");
+    }
+    console.log("Error:", error);
+  }
+
+  console.log();
+
+  // Save conversation entry
+  try {
+    const conversationMemory = getConversationMemory();
+    await conversationMemory.addEntry({
+      user_input: query,
+      agent_response: fullResponse,
+      mode: "ask"
+    });
+  } catch (error) {
+    console.error("Failed to save conversation:", error);
+  }
+};
+
+const handlePlannerMode = async (query: string) => {
+  // 1. Planning
+  const spinner = ora({ text: "Planning steps...", color: "white" }).start();
+  let planResult: any = { plan: [] };
+
+  try {
+    planResult = await generatePlan(query);
+    spinner.succeed("Planning complete");
+  } catch (e) {
+    spinner.fail("Planning failed");
+    console.log("Error:", e);
+    return;
+  }
+
+  const steps = planResult || [];
+  let allResults: any[] = [];
+
+  // Show plan
+  if (steps.length > 0) {
+    renderPlan(steps);
+
+    // 2. Execution via Orchestrator
+    allResults = await runPlan(steps, false);
+
+    // Show execution summary
+    renderSummary(steps.length, allResults.length, allResults);
+  }
+
+  // 3. Response
+  const executionSummary: ExecutionSummary = {
+    total_steps: steps.length,
+    completed_steps: allResults.length,
+    status: "SUCCESS",
+    details: allResults,
+  };
+
+  console.log("\nAdelie:\n");
+
+  let fullResponse = "";
+  for await (const chunk of generateResponse(executionSummary, query)) {
+    if (chunk) {
+      process.stdout.write(chunk);
+      fullResponse += chunk;
+    }
+  }
+
+  console.log();
+
+  // Save conversation entry
+  try {
+    const conversationMemory = getConversationMemory();
+    await conversationMemory.addEntry({
+      user_input: query,
+      agent_response: fullResponse,
+      mode: "planner",
+      execution_summary: executionSummary
+    });
+  } catch (error) {
+    console.error("Failed to save conversation:", error);
+  }
+};
+
 const startInteractiveCli = async () => {
   console.log(await getBanner("auto"));
   console.log("Type 'exit' to quit\n");
@@ -761,7 +959,7 @@ const startInteractiveCli = async () => {
 
     // Auto-detect mode for interactive mode - use LLM for intelligent detection
     const mode = await detectModeWithLLM(userInput);
-    
+
     if (mode === "ask") {
       await handleAskMode(userInput);
     } else {
@@ -839,11 +1037,28 @@ const startInteractiveCli = async () => {
 
       console.log("\nAdelie:\n");
 
+      let fullResponse = "";
       for await (const chunk of generateResponse(executionSummary, userInput)) {
-        if (chunk) process.stdout.write(chunk);
+        if (chunk) {
+          process.stdout.write(chunk);
+          fullResponse += chunk;
+        }
       }
 
       console.log("\n" + "—".repeat(50) + "\n");
+
+      // Save conversation entry
+      try {
+        const conversationMemory = getConversationMemory();
+        await conversationMemory.addEntry({
+          user_input: userInput,
+          agent_response: fullResponse,
+          mode: "planner",
+          execution_summary: executionSummary
+        });
+      } catch (error) {
+        console.error("Failed to save conversation:", error);
+      }
 
       // Clear State Buffer
       clearAIContext();
@@ -853,121 +1068,13 @@ const startInteractiveCli = async () => {
   rl.close();
 };
 
-const detectModeWithLLM = async (query: string): Promise<"ask" | "planner"> => {
-  const prompt = `Analyze this user query and determine if it requires action planning or is just a conversation:
-
-Query: "${query}"
-
-Respond with ONLY "ask" if it's:
-- A simple question or conversation
-- Asking for information or explanation
-- Casual chat or greeting
-- Request for opinion or creative content
-
-Respond with ONLY "planner" if it's:
-- Request to create, delete, modify, or manipulate files/systems
-- Request to search, find, or locate specific items
-- Request to install, build, or execute commands
-- Any task that requires step-by-step execution
-- File system operations
-- External tool usage
-- Memory commands: "remember this", "save this", "store this", "recall", "forget", etc.
-- Personal information the user wants to store
-- Requests to remember/recall information
-
-Your response (ask/planner):`;
-
-  try {
-    const config = readAgentConfig();
-    const response = await callOllama(prompt, config.model, false);
-    const result = response.toString().trim().toLowerCase();
-    return result.includes("planner") ? "planner" : "ask";
-  } catch {
-    // Fallback to simple heuristic if LLM fails
-    const actionWords = ["create", "delete", "modify", "update", "install", "build", "run", "execute", "search", "find", "list", "show"];
-    const memoryWords = ["remember", "save", "store", "recall", "forget", "guarda", "recuerda", "almacena"];
-    const hasActionWords = actionWords.some(word => query.toLowerCase().includes(word));
-    const hasMemoryWords = memoryWords.some(word => query.toLowerCase().includes(word));
-    return (hasActionWords || hasMemoryWords) ? "planner" : "ask";
-  }
-};
-
-const handleAskMode = async (query: string) => {
-  console.log("\nAdelie:\n");
-  
-  const spinner = ora({ text: "Thinking...", color: "white" }).start();
-  let responseStarted = false;
-  
-  try {
-    for await (const chunk of generateAskResponse(query)) {
-      if (!responseStarted) {
-        spinner.succeed("Response ready");
-        responseStarted = true;
-      }
-      if (chunk) process.stdout.write(chunk);
-    }
-  } catch (error) {
-    if (!responseStarted) {
-      spinner.fail("Response failed");
-    }
-    console.log("Error:", error);
-  }
-  
-  console.log();
-};
-
-const handlePlannerMode = async (query: string) => {
-  // 1. Planning
-  const spinner = ora({ text: "Planning steps...", color: "white" }).start();
-  let planResult: any = { plan: [] };
-
-  try {
-    planResult = await generatePlan(query);
-    spinner.succeed("Planning complete");
-  } catch (e) {
-    spinner.fail("Planning failed");
-    console.log("Error:", e);
-    return;
-  }
-
-  const steps = planResult || [];
-  let allResults: any[] = [];
-
-  // Show plan
-  if (steps.length > 0) {
-    renderPlan(steps);
-
-    // 2. Execution via Orchestrator
-    allResults = await runPlan(steps, false);
-    
-    // Show execution summary
-    renderSummary(steps.length, allResults.length, allResults);
-  }
-
-  // 3. Response
-  const executionSummary: ExecutionSummary = {
-    total_steps: steps.length,
-    completed_steps: allResults.length,
-    status: "SUCCESS",
-    details: allResults,
-  };
-
-  console.log("\nAdelie:\n");
-
-  for await (const chunk of generateResponse(executionSummary, query)) {
-    if (chunk) process.stdout.write(chunk);
-  }
-
-  console.log();
-};
-
 const main = async () => {
   // Initialize memory loading at startup
   await loadAllMemory();
   await loadPlannerMemory();
 
   const args = process.argv.slice(2);
-  
+
   // Parse CLI options
   const options = {
     model: null as string | null,
@@ -978,7 +1085,7 @@ const main = async () => {
     version: false,
     help: false,
   };
-  
+
   // Extract options (everything starting with --)
   const filteredArgs: string[] = [];
   for (let i = 0; i < args.length; i++) {
@@ -1004,65 +1111,75 @@ const main = async () => {
       filteredArgs.push(arg);
     }
   }
-  
+
   // Handle version
   if (options.version) {
     showVersion();
     rl.close();
     return;
   }
-  
+
   // Handle help
   if (options.help) {
     showHelp();
     rl.close();
     return;
   }
-  
+
   // Apply model override if provided
   if (options.model) {
     const config = readAgentConfig();
     writeAgentConfig({ model: options.model } as any);
     console.log(`Using model: ${options.model}`);
   }
-  
-  const [command, ...commandArgs] = filteredArgs;
 
-  if (!command) {
+  // Handle commands
+  if (filteredArgs.length > 0) {
+    const [command, ...commandArgs] = filteredArgs;
+
+    if (command === "config") {
+      handleConfigCommand(commandArgs);
+      rl.close();
+      return;
+    }
+
+    if (command === "mcp") {
+      await handleMcpCommand(commandArgs);
+      rl.close();
+      return;
+    }
+
+    if (command === "skills") {
+      await handleSkillsCommand(commandArgs);
+      rl.close();
+      return;
+    }
+
+    if (command === "memory") {
+      await handleMemoryCommand(commandArgs);
+      rl.close();
+      return;
+    }
+
+    if (command === "conversation") {
+      await handleConversationCommand(commandArgs);
+      rl.close();
+      return;
+    }
+  }
+
+  // If it's not a known command, treat it as a query
+  const query = filteredArgs.join(" ");
+
+  // If no arguments provided, start interactive mode
+  if (!query.trim()) {
     await startInteractiveCli();
     return;
   }
 
-  if (command === "config") {
-    handleConfigCommand(commandArgs);
-    rl.close();
-    return;
-  }
-
-  if (command === "mcp") {
-    await handleMcpCommand(commandArgs);
-    rl.close();
-    return;
-  }
-
-  if (command === "skills") {
-    await handleSkillsCommand(commandArgs);
-    rl.close();
-    return;
-  }
-
-  if (command === "memory") {
-    await handleMemoryCommand(commandArgs);
-    rl.close();
-    return;
-  }
-
-  // If it's not a known command, treat it as a query
-  const query = [command, ...commandArgs].join(" ");
-  
   // Determine mode
   let mode = "auto"; // auto, ask, planner
-  
+
   if (options.ask && options.planner) {
     console.log("Error: Cannot use both --ask and --planner modes simultaneously.");
     rl.close();
@@ -1072,18 +1189,18 @@ const main = async () => {
   } else if (options.planner) {
     mode = "planner";
   }
-  
+
   // Auto-detect mode using LLM for intelligent detection
   if (mode === "auto") {
     mode = await detectModeWithLLM(query);
   }
-  
+
   if (mode === "ask") {
     await handleAskMode(query);
   } else {
     await handlePlannerMode(query);
   }
-  
+
   rl.close();
 };
 
