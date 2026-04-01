@@ -129,6 +129,18 @@ const getBanner = async (mode: string = "planner"): Promise<string> => {
     }
   }
 
+  // Get current provider and model information
+  const providerManager = (await import("../core/llm/provider-manager.js")).providerManager;
+  const currentProvider = providerManager.getCurrentProvider();
+  const providerName = cfg.provider || 'unknown';
+  let modelName = 'unknown';
+
+  // Get model from current provider config
+  if (cfg.providers && cfg.providers[providerName]) {
+    const providerConfig = cfg.providers[providerName];
+    modelName = providerConfig.model || 'unknown';
+  }
+
   // Mode-specific colors and messages
   const modeConfig = {
     ask: {
@@ -176,13 +188,15 @@ const getBanner = async (mode: string = "planner"): Promise<string> => {
     `  • Actions: ${actionCount} registered`,
     `  • MCP Servers: ${mcpCount} installed`,
     `  • MCP Tools: ${mcpToolsCount} available`,
+    `  • Provider: ${providerName}`,
+    `  • Model: ${modelName}`,
   ];
 
   const content = [
     ascii.trimEnd(),
     "",
     `Hi there! I'm Adelie, your local assistant.`,
-    `Currently using: ${cfg.model}`,
+    `Currently using: ${providerName} provider with ${modelName} model`,
     "",
     `${currentMode.color} Current Mode: ${currentMode.title}`,
     `   ${currentMode.description}`,
@@ -219,6 +233,7 @@ OPTIONS:
 
 COMMANDS:
   config              Manage configuration
+  provider            Manage AI providers (OpenAI, Google, OpenRouter, Ollama)
   mcp                 Manage MCP servers
   skills              Manage skills
   memory              Manage memory
@@ -235,6 +250,8 @@ EXAMPLES:
   adelie --planner "create a new project folder"        # Force planner mode
   adelie --model qwen2.5-coder "summarize this file"
   adelie config show
+  adelie provider setup
+  adelie provider switch openai
   adelie mcp install-preset github
 
 For more information on a specific command, run:

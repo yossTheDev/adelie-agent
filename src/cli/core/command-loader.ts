@@ -4,6 +4,7 @@ import { mcpCommand } from '../commands/mcp.js';
 import { skillsCommand } from '../commands/skills.js';
 import { memoryCommand } from '../commands/memory.js';
 import { conversationCommand } from '../commands/conversation.js';
+import { providerCommand } from '../commands/provider.js';
 
 export const loadCommands = (): void => {
   // Register all commands
@@ -12,6 +13,7 @@ export const loadCommands = (): void => {
   commandRegistry.register(skillsCommand);
   commandRegistry.register(memoryCommand);
   commandRegistry.register(conversationCommand);
+  commandRegistry.register(providerCommand);
 };
 
 export const getCommandRegistry = () => commandRegistry;

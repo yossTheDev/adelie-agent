@@ -1,10 +1,10 @@
 import { ACTION_ARGS } from "../actions/actions.js";
 import { readAgentConfig } from "../config/agent-config.js";
 import { getSystemContextAsRules } from "../context/get-system-context.js";
-import { callOllama } from "../llm/llm.js";
 import { getMemoryStore } from "../memory/memory-store.js";
 import { getConversationMemory } from "../conversation/conversation-memory.js";
 import type { ExecutionSummary } from "./types.js";
+import { callLLM } from "../llm/provider-manager.js";
 
 function formatMemoryValueWithInstruction(key: string, value: any, source?: string, instruction?: string): string {
   const timestamp = new Date().toISOString();
@@ -214,7 +214,7 @@ Your response:`;
 
   try {
     const config = readAgentConfig();
-    const memoryCheckResponse = await callOllama(memoryCheckPrompt, config.model, false);
+    const memoryCheckResponse = await callLLM(memoryCheckPrompt, undefined, false);
     const result = memoryCheckResponse.toString().trim().toLowerCase();
     needsMemoryAction = result.includes("memory_needed");
   } catch {
@@ -246,7 +246,7 @@ Your response:`;
 
     try {
       const config = readAgentConfig();
-      const planResponse = await callOllama(memoryPlanPrompt, config.model, false);
+      const planResponse = await callLLM(memoryPlanPrompt, undefined, false);
       const planText = planResponse.toString().trim();
 
       // Parse and execute the memory plan
@@ -281,7 +281,7 @@ Your response:`;
   }
 
   const config = readAgentConfig();
-  const stream = await callOllama(prompt, config.model, true);
+  const stream = await callLLM(prompt, undefined, true);
 
   for await (const chunk of stream as AsyncGenerator<string>) {
     yield chunk;
@@ -316,7 +316,7 @@ export async function* generateResponse(
   }
 
   const config = readAgentConfig();
-  const stream = await callOllama(prompt, config.model, true);
+  const stream = await callLLM(prompt, undefined, true);
 
   for await (const chunk of stream as AsyncGenerator<string>) {
     yield chunk;

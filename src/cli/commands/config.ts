@@ -9,11 +9,11 @@ import {
 const handleConfigShow = (): CommandResult => {
   const cfg = readAgentConfig();
   const paths = getAgentConfigPaths();
-  
+
   console.log("Current config:");
   console.log(JSON.stringify(cfg, null, 2));
   console.log(`Path: ${paths.configPath}`);
-  
+
   return { success: true };
 };
 
@@ -33,11 +33,11 @@ const handleConfigReset = (): CommandResult => {
 const handleConfigSet = (args: string[]): CommandResult => {
   const [key, ...valueParts] = args;
   const valueRaw = valueParts.join(" ").trim();
-  
+
   if (!key || !valueRaw) {
     return {
       success: false,
-      message: "Usage: adelie config set <model|ollama_url|debug|max_loop_iterations|language> <value>"
+      message: "Usage: adelie config set <model|ollama_url|debug|max_loop_iterations|language|provider> <value>"
     };
   }
 
@@ -48,7 +48,7 @@ const handleConfigSet = (args: string[]): CommandResult => {
   const next = writeAgentConfig({ [key]: value } as any);
   console.log(`Updated '${key}'.`);
   console.log(JSON.stringify(next, null, 2));
-  
+
   return { success: true };
 };
 
@@ -98,23 +98,23 @@ export const configCommand: Command = {
   },
   handler: (context: CommandContext): CommandResult => {
     const [subcommand, ...rest] = context.args;
-    
+
     if (!subcommand || subcommand === "show") {
       return handleConfigShow();
     }
-    
+
     if (subcommand === "path") {
       return handleConfigPath();
     }
-    
+
     if (subcommand === "reset") {
       return handleConfigReset();
     }
-    
+
     if (subcommand === "set") {
       return handleConfigSet(rest);
     }
-    
+
     return {
       success: false,
       message: "Unknown config command. Use 'adelie config --help' for available commands."

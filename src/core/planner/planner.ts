@@ -1,6 +1,6 @@
 import { ACTION_ARGS, ACTION_DESCRIPTIONS } from "../actions/actions.js";
 import { McpInstaller } from "../mcp/mcp-installer.js";
-import { callOllama } from "../llm/llm.js";
+import { callLLM } from "../llm/provider-manager.js";
 import { getPlannerPromt } from "./prompt.js";
 import { SkillLoader } from "../skills/skill-loader.js";
 import { getMemoryStore } from "../memory/memory-store.js";
@@ -238,7 +238,7 @@ export async function generatePlan(
   // --- PHASE 1: GENERATION PROMPT ---
   const basePrompt = getPlannerPromt({ actionsText, mcpToolsText, skillsText, userInput, memoryContext });
 
-  let currentPlanRaw = (await callOllama(
+  let currentPlanRaw = (await callLLM(
     basePrompt,
     undefined,
     false,
