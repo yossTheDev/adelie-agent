@@ -30,7 +30,6 @@
 - **Memory Architecture**: Converted from persistent file-based to session-based temporary memory
   - Memory now exists only during current interactive session
   - Lost automatically when session ends (`exit` or process termination)
-  - No more persistent storage in `~/.adelie/conversation.json`
 - **Conversation Management**: Removed `adelie conversation` commands (no longer meaningful with temporary memory)
 - **Memory Loading**: Optimized to be synchronous and session-based
 - **Planner Integration**: Conversation context now passed directly to LLM in planner phase
