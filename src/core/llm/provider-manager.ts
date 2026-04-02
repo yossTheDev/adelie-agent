@@ -1,20 +1,5 @@
 import { readAgentConfig } from "../config/agent-config.js";
-
-export interface LLMResponse {
-  content: string;
-  model?: string;
-  usage?: {
-    prompt_tokens?: number;
-    completion_tokens?: number;
-    total_tokens?: number;
-  };
-}
-
-export interface LLMProvider {
-  name: string;
-  callAPI(prompt: string, stream?: boolean): Promise<string | AsyncGenerator<string>>;
-  validateConfig(): boolean;
-}
+import type { LLMProvider } from "./types.js";
 
 class OllamaProvider implements LLMProvider {
   name = "ollama";
@@ -1094,25 +1079,3 @@ class LLMProviderManager {
 }
 
 export const providerManager = new LLMProviderManager();
-
-export async function callLLM(
-  prompt: string,
-  provider?: string,
-  stream: boolean = false,
-): Promise<string | AsyncGenerator<string>> {
-  const targetProvider = provider ? providerManager.getProvider(provider) : providerManager.getCurrentProvider();
-
-  if (!targetProvider) {
-    return stream ?
-      (async function* () { yield "[Error: No provider available]"; })() :
-      "[Error: No provider available]";
-  }
-
-  if (!targetProvider.validateConfig()) {
-    return stream ?
-      (async function* () { yield `[Error: ${targetProvider.name} provider not properly configured]`; })() :
-      `[Error: ${targetProvider.name} provider not properly configured]`;
-  }
-
-  return targetProvider.callAPI(prompt, stream);
-}

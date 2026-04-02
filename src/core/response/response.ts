@@ -4,7 +4,7 @@ import { getSystemContextAsRules } from "../context/get-system-context.js";
 import { getMemoryStore } from "../memory/memory-store.js";
 import { getConversationMemory } from "../conversation/conversation-memory.js";
 import type { ExecutionSummary } from "./types.js";
-import { callLLM } from "../llm/provider-manager.js";
+import { callLLM } from "../llm/llm.js";
 
 function formatMemoryValueWithInstruction(key: string, value: any, source?: string, instruction?: string): string {
   const timestamp = new Date().toISOString();

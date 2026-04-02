@@ -1,6 +1,6 @@
 import { ACTION_ARGS, ACTION_DESCRIPTIONS } from "../actions/actions.js";
 import { McpInstaller } from "../mcp/mcp-installer.js";
-import { callLLM } from "../llm/provider-manager.js";
+import { callLLM } from "../llm/llm.js";
 import { getPlannerPromt } from "./prompt.js";
 import { SkillLoader } from "../skills/skill-loader.js";
 import { getMemoryStore } from "../memory/memory-store.js";
