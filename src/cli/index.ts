@@ -12,7 +12,6 @@ import {
   readAgentConfig,
   writeAgentConfig,
 } from "../core/config/agent-config.js";
-import { loadAllMemory } from "../core/response/response.js";
 import { loadPlannerMemory } from "../core/planner/planner.js";
 import { callOllama } from "../core/llm/llm.js";
 import { getConversationMemory } from "../core/conversation/conversation-memory.js";
@@ -237,7 +236,6 @@ COMMANDS:
   mcp                 Manage MCP servers
   skills              Manage skills
   memory              Manage memory
-  conversation        Manage conversation history
 
 MODES:
   --ask               Direct conversation mode (for simple questions)
@@ -341,7 +339,7 @@ const handleAskMode = async (query: string) => {
   // Save conversation entry
   try {
     const conversationMemory = getConversationMemory();
-    await conversationMemory.addEntry({
+    conversationMemory.addEntry({
       user_input: query,
       agent_response: fullResponse,
       mode: "ask"
@@ -402,7 +400,7 @@ const handlePlannerMode = async (query: string) => {
   // Save conversation entry
   try {
     const conversationMemory = getConversationMemory();
-    await conversationMemory.addEntry({
+    conversationMemory.addEntry({
       user_input: query,
       agent_response: fullResponse,
       mode: "planner",
@@ -516,7 +514,7 @@ const startInteractiveCli = async () => {
       // Save conversation entry
       try {
         const conversationMemory = getConversationMemory();
-        await conversationMemory.addEntry({
+        conversationMemory.addEntry({
           user_input: userInput,
           agent_response: fullResponse,
           mode: "planner",
@@ -535,8 +533,7 @@ const startInteractiveCli = async () => {
 };
 
 const main = async () => {
-  // Initialize memory loading at startup
-  await loadAllMemory();
+  // Initialize planner memory at startup
   await loadPlannerMemory();
 
   // Load all commands

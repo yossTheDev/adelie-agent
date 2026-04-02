@@ -157,7 +157,7 @@ const loadPlannerMemory = async (): Promise<void> => {
 
     // Load conversation history
     const conversationMemory = getConversationMemory();
-    const conversationHistory = await conversationMemory.getFormattedHistory();
+    const conversationHistory = conversationMemory.getFormattedHistory();
     plannerLoadedConversation = conversationHistory || "";
   } catch {
     plannerLoadedMemory = "";

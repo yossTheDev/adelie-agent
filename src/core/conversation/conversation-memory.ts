@@ -1,6 +1,3 @@
-import * as fs from "fs/promises";
-import * as path from "path";
-import * as os from "os";
 import { readAgentConfig } from "../config/agent-config.js";
 
 export interface ConversationEntry {
@@ -12,55 +9,21 @@ export interface ConversationEntry {
 }
 
 /**
- * Conversation memory system for maintaining chat history
+ * Temporary conversation memory system for interactive sessions
+ * This memory is lost when the session ends
  */
 export class ConversationMemory {
-  private filePath: string;
   private entries: ConversationEntry[] = [];
-  private loaded = false;
   private maxLength: number;
 
-  constructor(storageDir?: string) {
-    const configDir = storageDir || path.join(os.homedir(), ".adelie");
-    this.filePath = path.join(configDir, "conversation.json");
+  constructor() {
     this.maxLength = readAgentConfig().conversation_memory_length;
-  }
-
-  /**
-   * Load conversation data from disk
-   */
-  private async load(): Promise<void> {
-    if (this.loaded) return;
-
-    try {
-      await fs.mkdir(path.dirname(this.filePath), { recursive: true });
-      const content = await fs.readFile(this.filePath, "utf-8");
-      const data = JSON.parse(content);
-      this.entries = Array.isArray(data) ? data : [];
-    } catch (error) {
-      // File doesn't exist or is invalid, start with empty history
-      this.entries = [];
-    }
-    this.loaded = true;
-  }
-
-  /**
-   * Save conversation data to disk
-   */
-  private async save(): Promise<void> {
-    try {
-      await fs.writeFile(this.filePath, JSON.stringify(this.entries, null, 2), "utf-8");
-    } catch (error) {
-      throw new Error(`Failed to save conversation memory: ${String(error)}`);
-    }
   }
 
   /**
    * Add a new conversation entry
    */
-  async addEntry(entry: Omit<ConversationEntry, "timestamp">): Promise<void> {
-    await this.load();
-
+  addEntry(entry: Omit<ConversationEntry, "timestamp">): void {
     const newEntry: ConversationEntry = {
       ...entry,
       timestamp: Date.now(),
@@ -72,16 +35,12 @@ export class ConversationMemory {
     if (this.entries.length > this.maxLength) {
       this.entries = this.entries.slice(-this.maxLength);
     }
-
-    await this.save();
   }
 
   /**
    * Get the last N conversation entries
    */
-  async getRecentEntries(count?: number): Promise<ConversationEntry[]> {
-    await this.load();
-
+  getRecentEntries(count?: number): ConversationEntry[] {
     const limit = count || this.maxLength;
     return this.entries.slice(-limit);
   }
@@ -89,8 +48,8 @@ export class ConversationMemory {
   /**
    * Get conversation history formatted for LLM context
    */
-  async getFormattedHistory(count?: number): Promise<string> {
-    const entries = await this.getRecentEntries(count);
+  getFormattedHistory(count?: number): string {
+    const entries = this.getRecentEntries(count);
 
     if (entries.length === 0) {
       return "";
@@ -120,18 +79,14 @@ export class ConversationMemory {
   /**
    * Clear all conversation history
    */
-  async clear(): Promise<void> {
-    await this.load();
+  clear(): void {
     this.entries = [];
-    await this.save();
   }
 
   /**
    * Get conversation statistics
    */
-  async getStats(): Promise<{ totalEntries: number; totalSize: number; lastUpdated: number }> {
-    await this.load();
-
+  getStats(): { totalEntries: number; totalSize: number; lastUpdated: number } {
     const totalSize = JSON.stringify(this.entries).length;
     const lastUpdated = this.entries.length > 0
       ? Math.max(...this.entries.map(e => e.timestamp))
@@ -152,15 +107,22 @@ export class ConversationMemory {
   }
 }
 
-// Global conversation memory instance
+// Global conversation memory instance (temporary - lost on session end)
 let globalConversationMemory: ConversationMemory | null = null;
 
 /**
  * Get or create the global conversation memory instance
  */
-export const getConversationMemory = (storageDir?: string): ConversationMemory => {
+export const getConversationMemory = (): ConversationMemory => {
   if (!globalConversationMemory) {
-    globalConversationMemory = new ConversationMemory(storageDir);
+    globalConversationMemory = new ConversationMemory();
   }
   return globalConversationMemory;
+};
+
+/**
+ * Clear conversation memory (useful for testing or session reset)
+ */
+export const clearConversationMemory = (): void => {
+  globalConversationMemory = null;
 };

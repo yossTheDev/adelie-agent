@@ -33,6 +33,9 @@ Traditional agents rely on large models to handle complex reasoning in a single 
 - Generates natural language responses from execution results
 - Separates execution logic from communication
 - Provides clear, helpful feedback to users
+- **Conversation Memory Integration**: Automatically includes recent conversation context for continuous interactions
+- **Session-based Memory**: Maintains temporary conversation history during interactive sessions
+- **Multi-language Support**: Works naturally in any language without hardcoded patterns
 
 **Why this matters for small LLMs:**
 - **Reduced Context Requirements**: Each layer only needs to focus on its specific task
@@ -207,17 +210,21 @@ adelie skills validate
 
 ### Memory Management
 
-```bash
-adelie memory set <key> <value> [--instruction "AI instruction"]
-adelie memory list
-adelie memory search <query>
-adelie memory delete <key>
-adelie memory clear
-adelie memory stats
-```
+### Memory Management
+  - **Session-based Conversation Memory**: Maintains temporary conversation history during interactive sessions
+  - **Automatic Context Integration**: Conversation context is automatically included in planner and response phases
+  - **Configurable Memory Length**: Users can set how many conversations to remember (default: 10)
+  - **Natural Conversation Flow**: Previous exchanges are referenced naturally for continuous interactions
+  - **Multi-language Support**: Works in any language without hardcoded patterns
+  - **Privacy-First**: Memory exists only during current session, lost when session ends
 
-Memory is automatically loaded at startup and actively used in responses - no manual retrieval needed.
-Use `memory set` to store information that will be automatically available in future conversations.
+```bash
+# Memory is automatically managed during conversations
+adelie "how are you?"                    # Context flows naturally
+adelie "what did we discuss yesterday?"          # Previous exchanges referenced
+# Memory persists only during the current session
+exit                                    # All memory is lost when session ends
+```
 
 ## My Philosophy
 
@@ -247,6 +254,8 @@ yarn test:plans
 - [`docs/07-memory-system.md`](docs/07-memory-system.md) - Memory system
 - [`docs/08-skills-mcp-guide.md`](docs/08-skills-mcp-guide.md) - Skills and MCP guide
 - [`docs/09-mcp-config-in-skills.md`](docs/09-mcp-config-in-skills.md) - MCP configuration in skills
+- [`docs/10-creating-skills.md`](docs/10-creating-skills.md) - Creating custom skills
+- [`docs/CHANGELOG.md`](CHANGELOG.md) - Changelog
 
 ## Changelog
 

@@ -7,15 +7,10 @@
   - Configurable conversation length via `conversation_memory_length` (default: 10)
   - Automatic storage of user inputs and agent responses with timestamps
   - Support for both ask and planner modes with execution context
-  - Persistent storage in `~/.adelie/conversation.json`
 - **Enhanced Conversation Flow**: Natural, continuous conversation experience
   - Previous conversation context automatically included in planner and response phases
   - Multi-language support without hardcoded language-specific patterns
   - Context-aware responses that reference previous exchanges naturally
-- **Conversation Management CLI**: New `adelie conversation` command
-  - `adelie conversation list` - View recent conversation history
-  - `adelie conversation clear` - Clear all conversation history
-  - `adelie conversation stats` - Show conversation statistics
 - **Improved Response Prompts**: Enhanced for natural conversation
   - Removed rigid "CRITICAL" and "MUST USE" language
   - Added conversational guidelines for continuity and personalization
@@ -32,12 +27,14 @@
 - **CLI Behavior**: Interactive mode (`adelie`) now properly calls `startInteractiveCli()`
 - **Response Style**: More natural, varied, and personalized responses
 - **Conversation History Format**: Enhanced with better context and longer previews (300 chars)
-
-### Fixed
-- **Missing Interactive Mode**: Fixed `startInteractiveCli()` not being called when no arguments provided
-- **Language-Specific Rules**: Replaced hardcoded Spanish examples with universal patterns
-- **Repetitive Responses**: Added guidelines for response variation and natural language
-- **Memory Context Integration**: Fixed conversation history not being properly utilized
+- **Memory Architecture**: Converted from persistent file-based to session-based temporary memory
+  - Memory now exists only during current interactive session
+  - Lost automatically when session ends (`exit` or process termination)
+  - No more persistent storage in `~/.adelie/conversation.json`
+- **Conversation Management**: Removed `adelie conversation` commands (no longer meaningful with temporary memory)
+- **Memory Loading**: Optimized to be synchronous and session-based
+- **Planner Integration**: Conversation context now passed directly to LLM in planner phase
+- **Response Integration**: Conversation context now passed directly to LLM in response phase
 
 ## v0.1.3
 

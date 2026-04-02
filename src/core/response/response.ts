@@ -62,7 +62,7 @@ const loadAllMemory = async (): Promise<void> => {
 
     // Load conversation history
     const conversationMemory = getConversationMemory();
-    const conversationHistory = await conversationMemory.getFormattedHistory();
+    const conversationHistory = conversationMemory.getFormattedHistory();
     loadedConversation = conversationHistory || "";
   } catch {
     loadedMemory = "";
