@@ -6,14 +6,12 @@ import { runPlan } from "../core/executor/executor.js";
 import { generatePlan } from "../core/planner/planner.js";
 import { generateResponse, generateAskResponse } from "../core/response/response.js";
 import type { ExecutionSummary } from "../core/response/types.js";
-import { clearAIContext } from "../core/actions/state/state.js";
 import { ACTION_ARGS } from "../core/actions/actions.js";
 import {
   readAgentConfig,
   writeAgentConfig,
 } from "../core/config/agent-config.js";
 import { loadPlannerMemory } from "../core/planner/planner.js";
-import { callOllama } from "../core/llm/llm.js";
 import { getConversationMemory } from "../core/conversation/conversation-memory.js";
 
 // Import modular command system
@@ -28,7 +26,6 @@ const rl = readline.createInterface({
 const ask = (q: string) =>
   new Promise<string>((res) => rl.question(q, res));
 
-const DEBUG = false;
 
 const formatStepArgs = (args: Record<string, unknown>): string => {
   try {
@@ -38,27 +35,6 @@ const formatStepArgs = (args: Record<string, unknown>): string => {
   } catch {
     return "{}";
   }
-};
-
-const renderExecutionResult = (result: any, stepIndex: number): void => {
-  const status = result.success ? "✅" : "❌";
-  const title = `Step ${stepIndex + 1} ${status}`;
-
-  const content = [
-    `Action: ${result.action}`,
-    `Success: ${result.success}`,
-    result.result ? `Result: ${JSON.stringify(result.result, null, 2)}` : "",
-  ].filter(Boolean).join("\n");
-
-  console.log(
-    boxen(content, {
-      title,
-      titleAlignment: "left",
-      borderStyle: result.success ? "single" : "double",
-      padding: { top: 0, right: 1, bottom: 0, left: 1 },
-      margin: { top: 0, bottom: 0, left: 0, right: 0 },
-    })
-  );
 };
 
 const renderSummary = (totalSteps: number, completedSteps: number, results: any[]): void => {
@@ -129,8 +105,6 @@ const getBanner = async (mode: string = "planner"): Promise<string> => {
   }
 
   // Get current provider and model information
-  const providerManager = (await import("../core/llm/provider-manager.js")).providerManager;
-  const currentProvider = providerManager.getCurrentProvider();
   const providerName = cfg.provider || 'unknown';
   let modelName = 'unknown';
 
@@ -150,13 +124,8 @@ const getBanner = async (mode: string = "planner"): Promise<string> => {
     planner: {
       color: "🔵",
       title: "Planner Mode",
-      description: "Planning & execution - perfect for complex tasks"
+      description: "Planning & execution - perfect for complex tasks (default)"
     },
-    auto: {
-      color: "🟡",
-      title: "Auto Mode",
-      description: "Intelligent mode selection based on your query"
-    }
   };
 
   const currentMode = modeConfig[mode as keyof typeof modeConfig] || modeConfig.planner;
@@ -238,14 +207,12 @@ COMMANDS:
   memory              Manage memory
 
 MODES:
-  --ask               Direct conversation mode (for simple questions)
-  --planner           Planning and execution mode (default for most tasks)
-  --auto              Auto-detect mode based on query complexity
+  --planner           Planning and execution mode (default)
+  --ask               Direct conversation mode
 
 EXAMPLES:
-  adelie "what is the weather like?"                    # Auto-detect mode
-  adelie --ask "tell me a joke"                         # Force ask mode
-  adelie --planner "create a new project folder"        # Force planner mode
+  adelie --planner "create a new project folder"        # Use planner mode
+  adelie --ask "tell me a joke"                         # Use ask mode
   adelie --model qwen2.5-coder "summarize this file"
   adelie config show
   adelie provider setup
@@ -263,50 +230,6 @@ I'm running locally on your machine and respect your privacy.
 
 const showVersion = (): void => {
   console.log("Adelie v1.0.0");
-};
-
-
-
-
-
-
-const detectModeWithLLM = async (query: string): Promise<"ask" | "planner"> => {
-  const prompt = `Analyze this user query and determine if it requires action planning or is just a conversation:
-
-Query: "${query}"
-
-Respond with ONLY "ask" if it's:
-- A simple question or conversation
-- Asking for information or explanation
-- Casual chat or greeting
-- Request for opinion or creative content
-
-Respond with ONLY "planner" if it's:
-- Request to create, delete, modify, or manipulate files/systems
-- Request to search, find, or locate specific items
-- Request to install, build, or execute commands
-- Any task that requires step-by-step execution
-- File system operations
-- External tool usage
-- Memory commands: "remember this", "save this", "store this", "recall", "forget", etc.
-- Personal information user wants to store
-- Requests to remember/recall information
-
-Your response (ask/planner):`;
-
-  try {
-    const config = readAgentConfig();
-    const response = await callOllama(prompt, config.model, false);
-    const result = response.toString().trim().toLowerCase();
-    return result.includes("planner") ? "planner" : "ask";
-  } catch {
-    // Fallback to simple heuristic if LLM fails
-    const actionWords = ["create", "delete", "modify", "update", "install", "build", "run", "execute", "search", "find", "list", "show"];
-    const memoryWords = ["remember", "save", "store", "recall", "forget", "guarda", "recuerda", "almacena"];
-    const hasActionWords = actionWords.some(word => query.toLowerCase().includes(word));
-    const hasMemoryWords = memoryWords.some(word => query.toLowerCase().includes(word));
-    return (hasActionWords || hasMemoryWords) ? "planner" : "ask";
-  }
 };
 
 const handleAskMode = async (query: string) => {
@@ -412,7 +335,7 @@ const handlePlannerMode = async (query: string) => {
 };
 
 const startInteractiveCli = async () => {
-  console.log(await getBanner("auto"));
+  console.log(await getBanner("planner"));
   console.log("Type 'exit' to quit\n");
 
   while (true) {
@@ -421,112 +344,8 @@ const startInteractiveCli = async () => {
     if (userInput.toLowerCase() === "exit") break;
     if (!userInput.trim()) continue;
 
-    // Auto-detect mode for interactive mode - use LLM for intelligent detection
-    const mode = await detectModeWithLLM(userInput);
-
-    if (mode === "ask") {
-      await handleAskMode(userInput);
-    } else {
-      // 1. Planning
-      const spinner = ora({ text: "Planning steps...", color: "white" }).start();
-      let planResult: any = { plan: [] };
-
-      try {
-        planResult = await generatePlan(userInput);
-        spinner.succeed("Planning complete");
-      } catch (e) {
-        spinner.fail("Planning failed");
-        console.log("Error:", e);
-        continue;
-      }
-
-      const steps = planResult || [];
-      let allResults: any[] = [];
-      let stopFlow = false;
-
-      // Show plan
-      if (steps.length > 0) {
-        renderPlan(steps);
-
-        let currentSpinner: any = null;
-
-        // 2. Execution via Orchestrator
-        allResults = await runPlan(
-          steps,
-          false,
-          (index, total, step, result, error) => {
-            if (!result && !error) {
-              // Step Starting
-              currentSpinner = ora({
-                text: `Running step ${index + 1}/${total}: ${step.action}...`,
-                color: "white",
-              }).start();
-            } else if (error) {
-              // Step Crashed
-              currentSpinner?.fail(
-                `Step ${index + 1} crashed: ${error.message}`,
-              );
-              renderExecutionResult({ action: step.action, success: false, result: error.message }, index);
-            } else if (!result?.success) {
-              // Step Failed
-              currentSpinner?.fail(
-                `Step ${index + 1} failed: ${result?.error || 'Unknown error'}`,
-              );
-              renderExecutionResult(result, index);
-            } else {
-              // Step Succeeded
-              currentSpinner?.succeed(
-                `Step ${index + 1} completed: ${step.action}`,
-              );
-              renderExecutionResult(result, index);
-            }
-          },
-        );
-
-        // Show execution summary
-        renderSummary(steps.length, allResults.length, allResults);
-      }
-
-      // 3. Response
-      const executionSummary: ExecutionSummary = {
-        total_steps: steps.length,
-        completed_steps: allResults.length,
-        status: stopFlow ? "INTERRUPTED" : "SUCCESS",
-        details: allResults,
-      };
-
-      if (DEBUG) {
-        console.log(JSON.stringify(executionSummary, null, 2));
-      }
-
-      console.log("\nAdelie:\n");
-
-      let fullResponse = "";
-      for await (const chunk of generateResponse(executionSummary, userInput)) {
-        if (chunk) {
-          process.stdout.write(chunk);
-          fullResponse += chunk;
-        }
-      }
-
-      console.log("\n" + "—".repeat(50) + "\n");
-
-      // Save conversation entry
-      try {
-        const conversationMemory = getConversationMemory();
-        conversationMemory.addEntry({
-          user_input: userInput,
-          agent_response: fullResponse,
-          mode: "planner",
-          execution_summary: executionSummary
-        });
-      } catch (error) {
-        console.error("Failed to save conversation:", error);
-      }
-
-      // Clear State Buffer
-      clearAIContext();
-    }
+    // Always use planner mode - planner can return empty steps for conversational queries
+    await handlePlannerMode(userInput);
   }
 
   rl.close();
@@ -589,8 +408,8 @@ const main = async () => {
     return;
   }
 
-  // Determine mode
-  let mode = "auto"; // auto, ask, planner
+  // Determine mode - planner is now the default
+  let mode = "planner";
 
   if (parsedCommand.options.ask && parsedCommand.options.planner) {
     console.log("Error: Cannot use both --ask and --planner modes simultaneously.");
@@ -598,14 +417,8 @@ const main = async () => {
     return;
   } else if (parsedCommand.options.ask) {
     mode = "ask";
-  } else if (parsedCommand.options.planner) {
-    mode = "planner";
   }
-
-  // Auto-detect mode using LLM for intelligent detection
-  if (mode === "auto") {
-    mode = await detectModeWithLLM(query);
-  }
+  // planner mode is used by default (no need to check for --planner option)
 
   if (mode === "ask") {
     await handleAskMode(query);
