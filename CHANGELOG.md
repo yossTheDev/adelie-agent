@@ -18,7 +18,7 @@
   - Emphasis on continuous conversation over transactional Q&A
 - **Universal Memory Rules**: Language-agnostic memory detection
   - Memory action detection works in any language
-  - Expanded keyword variations: "memoriza", "grabar", "dime sobre mí", "qué sabes de mí"
+  - Expanded keyword variations
   - Removed language-specific hardcoded examples
 
 ### Changed
